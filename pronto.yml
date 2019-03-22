@@ -1,0 +1,12 @@
+---
+text:
+  format: "%{runner}\t| %{color_location} %{color_level}: %{msg}"
+flay:
+  exclude:
+    - 'bin/rails'
+    - 'bin/rake'
+    - 'bin/setup'
+    - 'bin/update'
+reek:
+  exclude:
+    - 'db/migrate/*'

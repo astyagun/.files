@@ -1,0 +1,10 @@
+*.swo
+*.swp
+.DS_Store
+.pronto.yml
+/.docker-sync/
+GPATH
+GRTAGS
+GTAGS
+tags
+tags.tmp
