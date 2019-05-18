@@ -3,6 +3,7 @@
 .DS_Store
 .pronto.yml
 /.docker-sync/
+/config/vifm/vifminfo
 GPATH
 GRTAGS
 GTAGS
