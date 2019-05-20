@@ -1,11 +1,1 @@
-*.swo
-*.swp
-.DS_Store
-.pronto.yml
-/.docker-sync/
 /config/vifm/vifminfo
-GPATH
-GRTAGS
-GTAGS
-tags
-tags.tmp
