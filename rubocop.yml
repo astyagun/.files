@@ -60,3 +60,6 @@ RSpec/MultipleExpectations:
     - 'spec/features/**/*_spec.rb'
 RSpec/LetSetup:
   Enabled: false
+RSpec/DescribeClass:
+  Exclude:
+    - 'spec/integration/**/*_spec.rb'
