@@ -54,6 +54,7 @@ Metrics/BlockLength:
 RSpec/ExampleLength:
   Exclude:
     - 'spec/features/**/*_spec.rb'
+    - 'spec/integration/**/*_spec.rb'
     - 'spec/requests/**/*_spec.rb'
 RSpec/MultipleExpectations:
   Exclude:
