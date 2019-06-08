@@ -1,0 +1,13 @@
+source ~/.files/zsh/alias.zsh
+source ~/.files/zsh/env.zsh
+source ~/.files/zsh/keyboard.zsh
+
+source ~/.files/zsh/fzf.zsh
+
+### Added by Zplugin's installer
+source "$HOME/.zplugin/bin/zplugin.zsh"
+autoload -Uz _zplugin
+(( ${+_comps} )) && _comps[zplugin]=_zplugin
+### End of Zplugin's installer chunk
+
+source ~/.files/zsh/plugins.zsh
