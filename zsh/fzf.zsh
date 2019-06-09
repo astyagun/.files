@@ -23,12 +23,19 @@ ctrl-p:up
 EOF
 )
 FZF_PREVIEW_BAT_OPTIONS=$(cat <<-EOF | tr "\n" ' '
---style=numbers
+--style=plain
 --color=always
 $([ -n "$VIM" ] && echo '--theme=GitHub')
 EOF
 )
-FZF_PREVIEW_OPTION="--preview '[[ \$(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat $FZF_PREVIEW_BAT_OPTIONS {} || cat {}) 2> /dev/null | head -500'"
+FZF_PREVIEW_OPTION_VALUE=$(cat <<-EOF | tr "\n" ' '
+[[ \$(file --mime {}) =~ binary ]] && echo {} is a binary file
+|| [ -d {} ] && tree -C {}
+|| (bat $FZF_PREVIEW_BAT_OPTIONS {} || cat {}) 2> /dev/null
+| head -500
+EOF
+)
+FZF_PREVIEW_OPTION="--preview '$FZF_PREVIEW_OPTION_VALUE'"
 
 export FZF_DEFAULT_OPTS="--reverse --history $HOME/.local/share/fzf-history $FZF_BIND_OPTION $FZF_PREVIEW_OPTION"
 export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -100'"
