@@ -44,12 +44,15 @@ zplg load AdrieanKhisbe/diractions
 
 # Visual
 
-zplugin ice pick'async.zsh' src'pure.zsh'
-zplugin light sindresorhus/pure
+zplg ice pick'async.zsh' src'pure.zsh'
+zplg light sindresorhus/pure
 PROMPT=$(echo "$PROMPT" | sed 's/magenta/green/')
 
-zplugin ice wait'0' atclone'gdircolors -b LS_COLORS > clrs.zsh' atpull'%atclone' pick'clrs.zsh' lucid
-zplugin load trapd00r/LS_COLORS
+zplg ice wait'0' atclone'gdircolors -b LS_COLORS > clrs.zsh' atpull'%atclone' pick'clrs.zsh' lucid
+zplg load trapd00r/LS_COLORS
+
+zplg ice wait'0' lucid
+zplg load djui/alias-tips
 
 # Syntax highlighting, to be loaded last, also atinit'' executes callbacks for completions
 zplg ice wait'0c' atinit'zpcompinit; zpcdreplay' lucid
