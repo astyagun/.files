@@ -33,6 +33,9 @@ zplg_prezto_module homebrew
 zplg ice wait'0' lucid
 zplg load akarzim/zsh-docker-aliases
 
+zplg ice wait'0' lucid
+zplg load djui/alias-tips
+
 
 # Navigation
 
@@ -52,7 +55,7 @@ zplg ice wait'0' atclone'gdircolors -b LS_COLORS > clrs.zsh' atpull'%atclone' pi
 zplg load trapd00r/LS_COLORS
 
 zplg ice wait'0' lucid
-zplg load djui/alias-tips
+zplg load ael-code/zsh-colored-man-pages
 
 # Syntax highlighting, to be loaded last, also atinit'' executes callbacks for completions
 zplg ice wait'0c' atinit'zpcompinit; zpcdreplay' lucid
