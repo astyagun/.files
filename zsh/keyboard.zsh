@@ -25,6 +25,7 @@ bindkey -M emacs "\C- " glob-alias
 # Display an indicator when completing
 function expand-or-complete-with-indicator {
   local indicator
+  indicator='...'
 
   # This is included to work around a bug in zsh which shows up when interacting
   # with multi-line prompts.
