@@ -21,22 +21,3 @@ function glob-alias {
 }
 zle -N glob-alias
 bindkey -M emacs "\C- " glob-alias
-
-# Display an indicator when completing
-function expand-or-complete-with-indicator {
-  local indicator
-  indicator='...'
-
-  # This is included to work around a bug in zsh which shows up when interacting
-  # with multi-line prompts.
-  if [[ -z "$indicator" ]]; then
-    zle expand-or-complete
-    return
-  fi
-
-  print -Pn "$indicator"
-  zle expand-or-complete
-  zle redisplay
-}
-zle -N expand-or-complete-with-indicator
-bindkey -M emacs "\C-I" expand-or-complete-with-indicator
