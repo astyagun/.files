@@ -13,6 +13,7 @@ zpl ice wait'0' atload"$HISTORY_KEYS" lucid
 zpl load zsh-users/zsh-history-substring-search
 
 zpl_prezto_module completion
+zpl_prezto_module directory
 
 
 # Functions, aliases and completions
