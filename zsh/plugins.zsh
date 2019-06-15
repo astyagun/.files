@@ -1,18 +1,18 @@
-function zplg_prezto_module() {
-  zplg ice wait'0' svn lucid
-  zplg snippet PZT::modules/$1
+function zpl_prezto_module() {
+  zpl ice wait'0' svn lucid
+  zpl snippet PZT::modules/$1
 }
 
 # Zsh setup
 
-zplg ice svn lucid
-zplg snippet PZT::modules/history
+zpl ice svn lucid
+zpl snippet PZT::modules/history
 
 HISTORY_KEYS='bindkey -M emacs "^P" history-substring-search-up; bindkey -M emacs "^N" history-substring-search-down'
-zplg ice wait'0' atload"$HISTORY_KEYS" lucid
-zplg load zsh-users/zsh-history-substring-search
+zpl ice wait'0' atload"$HISTORY_KEYS" lucid
+zpl load zsh-users/zsh-history-substring-search
 
-zplg_prezto_module completion
+zpl_prezto_module completion
 
 
 # Functions, aliases and completions
@@ -23,42 +23,42 @@ zstyle ':prezto:module:utility:wdiff' color 'yes'
 zstyle ':prezto:module:utility:make' color 'yes'
 zstyle ':prezto:module:utility' correct 'yes'
 zstyle ':prezto:module:utility' safe-ops 'yes'
-zplg_prezto_module utility
-zplg_prezto_module git
-zplg_prezto_module homebrew
+zpl_prezto_module utility
+zpl_prezto_module git
+zpl_prezto_module homebrew
 
-zplg ice wait'0' lucid
-zplg load akarzim/zsh-docker-aliases
+zpl ice wait'0' lucid
+zpl load akarzim/zsh-docker-aliases
 
-zplg ice wait'0' lucid
-zplg load djui/alias-tips
+zpl ice wait'0' lucid
+zpl load djui/alias-tips
 
 
 # Navigation
 
 alias cdc='code cd'
 alias mydiraction_dispatch=_diraction-dispatch
-zplg ice wait'0' cp'__diraction-dispatch -> _mydiraction-dispatch' atload'diraction create code ~/Code' lucid
-zplg load AdrieanKhisbe/diractions
+zpl ice wait'0' cp'__diraction-dispatch -> _mydiraction-dispatch' atload'diraction create code ~/Code' lucid
+zpl load AdrieanKhisbe/diractions
 
 
 # Visual
 
-zplg ice pick'async.zsh' src'pure.zsh'
-zplg light sindresorhus/pure
+zpl ice pick'async.zsh' src'pure.zsh'
+zpl light sindresorhus/pure
 PROMPT=$(echo "$PROMPT" | sed 's/magenta/green/')
 
-zplg ice wait'0' atclone'gdircolors -b LS_COLORS > clrs.zsh' atpull'%atclone' pick'clrs.zsh' lucid
-zplg load trapd00r/LS_COLORS
+zpl ice wait'0' atclone'gdircolors -b LS_COLORS > clrs.zsh' atpull'%atclone' pick'clrs.zsh' lucid
+zpl load trapd00r/LS_COLORS
 
-zplg ice wait'0' lucid
-zplg load ael-code/zsh-colored-man-pages
+zpl ice wait'0' lucid
+zpl load ael-code/zsh-colored-man-pages
 
 # Syntax highlighting, to be loaded last, also atinit'' executes callbacks for completions
-zplg ice wait'0' atinit'zpcompinit; zpcdreplay' lucid
+zpl ice wait'0' atinit'zpcompinit; zpcdreplay' lucid
 export ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets cursor line pattern root)
-zplg load zsh-users/zsh-syntax-highlighting
+zpl load zsh-users/zsh-syntax-highlighting
 
 # Needs to be loaded after zsh-syntax-highlighting
-zplg ice wait'0' atload'_zsh_autosuggest_start' lucid
-zplg load zsh-users/zsh-autosuggestions
+zpl ice wait'0' atload'_zsh_autosuggest_start' lucid
+zpl load zsh-users/zsh-autosuggestions
