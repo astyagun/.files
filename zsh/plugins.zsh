@@ -48,9 +48,6 @@ zpl ice pick'async.zsh' src'pure.zsh'
 zpl light sindresorhus/pure
 PROMPT=$(echo "$PROMPT" | sed 's/magenta/green/')
 
-zpl ice wait'0' atclone'gdircolors -b LS_COLORS > clrs.zsh' atpull'%atclone' pick'clrs.zsh' lucid
-zpl load trapd00r/LS_COLORS
-
 zpl ice wait'0' lucid
 zpl load ael-code/zsh-colored-man-pages
 
