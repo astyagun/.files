@@ -12,9 +12,6 @@ HISTORY_KEYS='bindkey -M emacs "^P" history-substring-search-up; bindkey -M emac
 zplg ice wait'0' atload"$HISTORY_KEYS" lucid
 zplg load zsh-users/zsh-history-substring-search
 
-zplg ice wait'0' lucid
-zplg load zsh-users/zsh-autosuggestions
-
 zplg_prezto_module completion
 
 
@@ -58,6 +55,10 @@ zplg ice wait'0' lucid
 zplg load ael-code/zsh-colored-man-pages
 
 # Syntax highlighting, to be loaded last, also atinit'' executes callbacks for completions
-zplg ice wait'0c' atinit'zpcompinit; zpcdreplay' lucid
+zplg ice wait'0' atinit'zpcompinit; zpcdreplay' lucid
 export ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets cursor line pattern root)
 zplg load zsh-users/zsh-syntax-highlighting
+
+# Needs to be loaded after zsh-syntax-highlighting
+zplg ice wait'0' atload'_zsh_autosuggest_start' lucid
+zplg load zsh-users/zsh-autosuggestions
