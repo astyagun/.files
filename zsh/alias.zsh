@@ -51,6 +51,7 @@ function cucumber-changed {
 
 # Git
 alias grr='git rerebase'
+alias gbP='git branch-purge'
 
 # Ping & trace
 alias -g wr='10.0.1.1'
