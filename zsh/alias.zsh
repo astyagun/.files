@@ -74,6 +74,7 @@ alias dfh='df | grep disk | awk "{print \$4}"'
 # "+ 123M ..." -> "1M + 123M ..."
 alias tmutil-compare-sort="sed -E 's/^([+-\!] [0-9\.]+)([A-Z])/1\2 \1\2/' | sort -h -k 1,1 -k 3,3g"
 alias brewu='brew update && brew upgrade && brew cleanup'
+alias strip-colors='ruby -pe "gsub(/\e\[[0-9;]*[msuJGK]/, %())"'
 
 # -g utils
 alias -g M='| more'
@@ -82,6 +83,7 @@ alias -g H='| head'
 alias -g T='| tail'
 alias -g G='| grep'
 alias -g X='| xargs'
+alias -g C='| strip-colors'
 alias -g LL="2>&1 | less"
 alias -g NE="2> /dev/null"
 alias -g NUL="> /dev/null 2>&1"
