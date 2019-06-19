@@ -39,8 +39,6 @@ zpl load akarzim/zsh-docker-aliases
 zpl ice wait'0' lucid
 zpl load djui/alias-tips
 
-zpl_omz_completion_plugin fd
-zpl_omz_completion_plugin ripgrep
 zpl_omz_completion_plugin httpie
 
 
