@@ -1,0 +1,66 @@
+#!/bin/sh
+# Rebase a number of branches on top of one another
+# https://gist.github.com/astyagun/0c9b0ea51ad9dd350c0d7326c364188f
+#
+# Given
+#
+#       A---B---C
+#      /
+#     ----origin/A
+#
+# and A is tracking a remote branch origin/A
+#
+# Running
+#
+#   git checkout C
+#   git rerebase A B
+#
+# will produce
+#
+#               A'--B'--C'
+#              /
+#     ----origin/A
+
+GIT_CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+
+for branch in "$@" "$GIT_CURRENT_BRANCH"; do
+  if ! is-valid-git-branch $branch; then
+    echo "ERROR: Unrecognized revision or branch: '$branch'!"
+    exit 1
+  fi
+done
+
+PREVIOUS_BRANCH=''
+
+for branch in "$@" "$GIT_CURRENT_BRANCH"; do
+  echo
+  echo "Switching to branch '$branch'..."
+  echo
+  if ! git checkout "$branch"; then
+    echo
+    echo "ERROR: Failed switching to branch '$branch'"
+    exit 2
+  fi
+
+  if [ "$PREVIOUS_BRANCH" = '' ]; then
+    echo
+    echo "Rebasing '$branch' on top of it's remote tracked branch..."
+    echo
+    if ! git rebase; then
+      echo
+      echo "ERROR: Failed rebasing '$branch' on top of it's remote tracked branch"
+      exit 3
+    fi
+  else
+    echo
+    echo "Rebasing '$branch' on top of '$PREVIOUS_BRANCH'..."
+    echo
+    if ! git rebase "$PREVIOUS_BRANCH"; then
+      echo
+      echo "ERROR: Failed rebasing '$branch' on top of '$PREVIOUS_BRANCH'"
+      exit 3
+    fi
+  fi
+
+  PREVIOUS_BRANCH="$branch"
+done

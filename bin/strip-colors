@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ruby -pe 'gsub(/\e\[[0-9;]*[msuJGK]/, %()); STDOUT.flush'

@@ -1,0 +1,62 @@
+#!/bin/bash -l
+# tmux shell for macOS Terminal application
+#
+# Starts tmux taking current directory and open tmux sessions into account
+#
+# When Terminal starts, it's $PWD always equals $HOME. Except cases when Terminal application was told to open
+# some particular directory (`open ~/Code -a Terminal` for instance).
+#
+# In the first case we want to attach to existing tmux session if one exists. If there is more than one
+# session open, the script will ask user which session to attach to.
+#
+# In the case of opening Terminal with some particular directory, new session is created.
+#
+# https://gist.github.com/astyagun/2c326e9b12e36f25e7ee01c7ccaa4656
+
+function tmux_sessions_count() {
+  tmux list-sessions 2>/dev/null | wc -l | tr -d '[:space:]'
+}
+
+function request_session_number_from_user() {
+  echo There are several sessions open at the moment:
+  tmux list-sessions
+  echo n: new-session
+  echo 'Please enter the number of session to attach to or "n" for a new session: '
+  read -n1 SESSION
+}
+
+function get_session_number() {
+  request_session_number_from_user
+  while [ ! $((tmux list-sessions | cut -d: -f1; echo n) | grep $SESSION) ]; do
+    print_error_message
+    echo
+    request_session_number_from_user
+  done
+  clear
+}
+
+function print_error_message() {
+  RED="\e[91m"
+  BOLD="\e[1m"
+  NORMAL="\e[0m"
+  RESET="\e[m"
+  printf "\n${RED}${BOLD}Error${NORMAL}${RED}: there's no session with number \"${SESSION}\"!${RESET}"
+}
+
+if [ $PWD = $HOME ]; then
+  TMUX_SESSIONS_COUNT=`tmux_sessions_count`
+
+  if [ $TMUX_SESSIONS_COUNT -gt 0 ]; then
+    get_session_number
+
+    if [ $SESSION = 'n' ]; then
+      tmux new-session
+    else
+      tmux attach-session -t $SESSION
+    fi
+  else
+    tmux new-session
+  fi
+else
+  tmux new-session -c "$PWD"
+fi

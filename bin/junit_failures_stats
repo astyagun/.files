@@ -1,0 +1,13 @@
+#!/bin/sh
+
+cat ~/Downloads/results*.xml | \
+  vimed 'g/<failure[^>]\+\n/.,/>/j' | \
+  sed -E \
+    -e '/<failure/!d' \
+    -e 's/ with backtrace:[^"]+//' \
+    -e 's/.*<failure message="([^"]+)" type="([^"]+)">.*/\2: \1/g' \
+    -e 's/0x[0-9a-f]+//g' \
+    -e 's/[0-9]//g' | \
+  ruby -rcgi -ne 'puts CGI.unescape_html $_' | \
+  sed -E 's/(RSpec::ExampleGroups::)[^>]+/\1/' | \
+  sort | uniq -c | sort -nr

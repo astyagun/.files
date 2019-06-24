@@ -1,0 +1,5 @@
+#!/bin/sh
+# Use Vim in shell piped command chains
+# https://gist.github.com/astyagun/952cb3b61b2d7d5e5d95b722d95bf428
+
+(vim - -esbnN -c "$@" -c 'w!/dev/fd/3|q!' >/dev/null) 3>&1
