@@ -14,8 +14,6 @@ export FZF_ALT_C_COMMAND="fd $FZF_FD_COMMON_OPTIONS --type d ."
 FZF_BIND_OPTION=$(cat <<-EOF | sed -e ':a' -e '$!N; s/\n/,/; ta'
 --bind ctrl-f:page-down
 ctrl-b:page-up
-ctrl-d:half-page-down
-ctrl-u:half-page-up
 ctrl-j:next-history
 ctrl-k:previous-history
 ctrl-n:down
