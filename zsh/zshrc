@@ -1,4 +1,3 @@
-source ~/.files/zsh/alias.zsh
 source ~/.files/zsh/env.zsh
 source ~/.files/zsh/keyboard.zsh
 
@@ -11,3 +10,5 @@ autoload -Uz _zplugin
 ### End of Zplugin's installer chunk
 
 source ~/.files/zsh/plugins.zsh
+
+source ~/.files/zsh/alias.zsh
