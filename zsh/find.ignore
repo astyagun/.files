@@ -3,6 +3,7 @@
 *.swo
 *.swp
 .DS_Store
+.bundle
 .docker-sync/
 .git/
 .keep
