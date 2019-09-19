@@ -1,8 +1,20 @@
 source ~/.files/zsh/env.zsh
 source ~/.files/zsh/keyboard.zsh
 
+#########
+#  fzf  #
+#########
+
 source ~/.files/zsh/fzf.zsh
 source /usr/local/opt/chruby/share/chruby/chruby.sh
+
+# Remap Ctrl+T from fzf back to original
+bindkey -M emacs '^X^T' fzf-file-widget
+bindkey -M emacs '^T' transpose-chars
+
+#############
+#  zplugin  #
+#############
 
 ### Added by Zplugin's installer
 source "$HOME/.zplugin/bin/zplugin.zsh"
@@ -11,5 +23,9 @@ autoload -Uz _zplugin
 ### End of Zplugin's installer chunk
 
 source ~/.files/zsh/plugins.zsh
+
+#############
+#  aliases  #
+#############
 
 source ~/.files/zsh/alias.zsh
