@@ -52,9 +52,9 @@ zpl load AdrieanKhisbe/diractions
 
 # Visual
 
+zstyle :prompt:pure:prompt:success color green
 zpl ice pick'async.zsh' src'pure.zsh'
 zpl light sindresorhus/pure
-PROMPT=$(echo "$PROMPT" | sed 's/magenta/green/')
 
 zpl ice wait'0' lucid
 zpl load ael-code/zsh-colored-man-pages
