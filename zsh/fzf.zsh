@@ -23,7 +23,6 @@ EOF
 FZF_PREVIEW_BAT_OPTIONS=$(cat <<-EOF | tr "\n" ' '
 --style=plain
 --color=always
-$([ -n "$VIM" ] && echo '--theme=GitHub')
 EOF
 )
 FZF_PREVIEW_OPTION_VALUE=$(cat <<-EOF | tr "\n" ' '
