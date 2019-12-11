@@ -10,3 +10,5 @@ export PATH="/usr/local/heroku/bin:$PATH"
 export PATH="$HOME/.files/bin:$PATH"
 export PATH="$HOME/Code/tools/code_release_deploy:$PATH"
 export PATH="$HOME/bin:$PATH"
+
+export HOMEBREW_NO_ANALYTICS=1
