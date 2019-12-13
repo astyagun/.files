@@ -29,7 +29,9 @@ zstyle ':prezto:module:utility:wdiff' color 'yes'
 zstyle ':prezto:module:utility:make' color 'yes'
 zstyle ':prezto:module:utility' correct 'yes'
 zstyle ':prezto:module:utility' safe-ops 'yes'
-zpl_prezto_module utility
+zpl ice wait'0' atload'which -a rake | grep aliased >/dev/null && unalias rake' svn lucid
+zpl snippet PZT::modules/utility
+
 zpl_prezto_module git
 zpl_prezto_module homebrew
 

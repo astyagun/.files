@@ -14,7 +14,7 @@ alias dksynr='dksyn stop && dksyn start'
 alias bundle='ds ./bin/bundle'
 alias cucumber='ds ./bin/cucumber'
 alias rails='ds ./bin/rails'
-alias rake='ds ./bin/rake'
+function rake() { docker-compose exec -e COLUMNS=`tput cols` -e LINES=`tput lines` spring ./bin/rake "$@" }
 alias rspec='ds ./bin/rspec'
 alias teaspoon='ds ./bin/teaspoon'
 alias thor='ds thor'
