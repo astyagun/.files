@@ -1,23 +1,23 @@
 # Docker
+alias dksyn='docker-sync'
+alias dksynr='dksyn stop && dksyn start'
+alias down='dkcd; dksyn clean'
+alias dr='dkce ruby'
 alias ds='dkce spring'
 alias dsd='dkce --env RAILS_ENV=development spring'
 alias dst='dkce --env RAILS_ENV=test spring'
-alias dr='dkce ruby'
-alias dksyn='docker-sync'
-alias up='dksyn start; dkcU'
 alias start='dksyn start &; dkcU &; wait'
 alias stop='dksyn stop &; dkcx &; wait'
-alias down='dkcd; dksyn clean'
-alias dksynr='dksyn stop && dksyn start'
+alias up='dksyn start; dkcU'
 
 # Rails in Docker
 alias bundle='ds ./bin/bundle'
 alias cucumber='ds ./bin/cucumber'
 alias rails='ds ./bin/rails'
-function rake() { docker-compose exec -e COLUMNS=`tput cols` -e LINES=`tput lines` spring ./bin/rake "$@" }
 alias rspec='ds ./bin/rspec'
 alias teaspoon='ds ./bin/teaspoon'
 alias thor='ds thor'
+function rake() { docker-compose exec -e COLUMNS=`tput cols` -e LINES=`tput lines` spring ./bin/rake "$@" }
 function rspec-changed {
   if [ $# -eq 0 -o $1 = '-h' -o $1 = '--help' ]; then
     echo 'usage: rspec-changed <commit-ish>'
