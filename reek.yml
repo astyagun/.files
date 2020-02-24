@@ -1,0 +1,12 @@
+---
+detectors:
+  IrresponsibleModule:
+    enabled: false
+  UtilityFunction:
+    enabled: false
+directories:
+  'app/controllers':
+    InstanceVariableAssumption:
+      enabled: false
+exclude_paths:
+  - db/migrate
