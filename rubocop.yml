@@ -8,59 +8,36 @@ AllCops:
     - db/schema.rb
     - db/structure.rb
   ExtraDetails: true
-  Include:
-    - '**/Rakefile'
-    - '**/config.ru'
-  TargetRubyVersion: 2.4
-# Layout/DotPosition:
-#   EnforcedStyle: trailing
+  TargetRubyVersion: 2.7
+
+Layout/LineLength:
+  Max: 120
 Layout/MultilineMethodCallIndentation:
   EnforcedStyle: indented
 Layout/SpaceInsideHashLiteralBraces:
-  EnforcedStyle: space
-Layout/IndentArray:
-  EnforcedStyle: consistent
-Layout/IndentationConsistency:
-  EnforcedStyle: rails
+  EnforcedStyle: no_space
 
-Metrics/LineLength:
-  Max: 120
-Rails:
-  Enabled: true
-Rails/NotNullColumn:
-  Enabled: false
-
-Style/Documentation:
-  Enabled: false
-Style/MethodCallWithoutArgsParentheses:
-  Enabled: true
-Naming/FileName:
-  Exclude:
-    - Gemfile
-Style/FrozenStringLiteralComment:
-  Enabled: false
-Style/SymbolProc:
-  Exclude:
-    - 'db/migrate/*'
-Style/MethodDefParentheses:
-  EnforcedStyle: require_no_parentheses
-
-RSpec/NestedGroups:
-  Max: 5
 Metrics/BlockLength:
   Exclude:
     - '**/*_spec.rb'
-    - 'spec/support/shared_contexts/**/*.rb'
+
+Style/Documentation:
+  Enabled: false
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+RSpec/DescribeClass:
+  Exclude:
+    - 'spec/integration/**/*_spec.rb'
 RSpec/ExampleLength:
   Exclude:
     - 'spec/features/**/*_spec.rb'
     - 'spec/integration/**/*_spec.rb'
     - 'spec/requests/**/*_spec.rb'
+RSpec/LetSetup:
+  Enabled: false
 RSpec/MultipleExpectations:
   Exclude:
     - 'spec/features/**/*_spec.rb'
-RSpec/LetSetup:
-  Enabled: false
-RSpec/DescribeClass:
-  Exclude:
-    - 'spec/integration/**/*_spec.rb'
+RSpec/NestedGroups:
+  Max: 5
