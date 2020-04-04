@@ -1,5 +1,7 @@
 ---
-require: rubocop-rspec
+require:
+  - rubocop-rails
+  - rubocop-rspec
 
 AllCops:
   DisplayCopNames: true
@@ -7,6 +9,9 @@ AllCops:
   ExtraDetails: true
   TargetRubyVersion: 2.7
 
+Layout/HashAlignment:
+  EnforcedHashRocketStyle: table
+  EnforcedColonStyle: table
 Layout/LineLength:
   Max: 120
 Layout/MultilineMethodCallIndentation:
@@ -31,11 +36,13 @@ RSpec/ExampleLength:
     - 'spec/features/**/*_spec.rb'
     - 'spec/integration/**/*_spec.rb'
     - 'spec/requests/**/*_spec.rb'
+    - 'spec/system/**/*_spec.rb'
 RSpec/LetSetup:
   Enabled: false
 RSpec/MultipleExpectations:
   Exclude:
     - 'spec/features/**/*_spec.rb'
+    - 'spec/system/**/*_spec.rb'
 RSpec/NestedGroups:
   Max: 5
 
