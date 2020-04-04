@@ -4,9 +4,6 @@ require: rubocop-rspec
 AllCops:
   DisplayCopNames: true
   DisplayStyleGuide: true
-  Exclude:
-    - db/schema.rb
-    - db/structure.rb
   ExtraDetails: true
   TargetRubyVersion: 2.7
 
