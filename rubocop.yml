@@ -41,3 +41,11 @@ RSpec/MultipleExpectations:
     - 'spec/features/**/*_spec.rb'
 RSpec/NestedGroups:
   Max: 5
+
+# Pending cops
+
+Lint/RaiseException: {Enabled: true}
+Lint/StructNewOverride: {Enabled: true}
+Style/HashEachMethods: {Enabled: true}
+Style/HashTransformKeys: {Enabled: true}
+Style/HashTransformValues: {Enabled: true}
