@@ -28,6 +28,12 @@ Style/Documentation:
 Style/FrozenStringLiteralComment:
   Enabled: false
 
+RSpec/ContextWording:
+  Prefixes:
+    - and
+    - when
+    - with
+    - without
 RSpec/DescribeClass:
   Exclude:
     - 'spec/integration/**/*_spec.rb'
