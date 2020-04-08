@@ -43,6 +43,8 @@ RSpec/ExampleLength:
     - 'spec/integration/**/*_spec.rb'
     - 'spec/requests/**/*_spec.rb'
     - 'spec/system/**/*_spec.rb'
+RSpec/ExpectChange:
+  Enabled: false
 RSpec/LetSetup:
   Enabled: false
 RSpec/MultipleExpectations:
