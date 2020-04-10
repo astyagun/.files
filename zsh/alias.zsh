@@ -1,23 +1,26 @@
 # Docker
+alias de='dkce $(dkc-executable-container)'
+alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
+alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
 alias dksyn='docker-sync'
 alias dksynr='dksyn stop && dksyn start'
 alias down='dkcd; dksyn clean'
 alias dr='dkce ruby'
 alias ds='dkce spring'
-alias dsd='dkce --env RAILS_ENV=development spring'
-alias dst='dkce --env RAILS_ENV=test spring'
 alias start='dksyn start &; dkcU &; wait'
 alias stop='dksyn stop &; dkcx &; wait'
 alias up='dksyn start; dkcU'
 
 # Rails in Docker
-alias bundle='ds ./bin/bundle'
-alias cucumber='ds ./bin/cucumber'
-alias rails='ds ./bin/rails'
-alias rspec='ds ./bin/rspec'
-alias teaspoon='ds ./bin/teaspoon'
-alias thor='ds thor'
-function rake() { docker-compose exec -e COLUMNS=`tput cols` -e LINES=`tput lines` spring ./bin/rake "$@" }
+alias bundle='de bundle'
+alias cucumber='de cucumber'
+alias rails='de rails'
+alias rspec='de rspec'
+alias teaspoon='de teaspoon'
+alias thor='de thor'
+function rake() {
+  docker-compose exec -e COLUMNS=`tput cols` -e LINES=`tput lines` $(dkc-executable-container) rake "$@"
+}
 function rspec-changed {
   if [ $# -eq 0 -o $1 = '-h' -o $1 = '--help' ]; then
     echo 'usage: rspec-changed <commit-ish>'
@@ -30,7 +33,7 @@ function rspec-changed {
       | grep '_spec\.rb$')
     echo Running changed RSpec files:
     echo $FILES_LIST | xargs -I% echo "- %"
-    echo $FILES_LIST | xargs docker-compose exec -T spring ./bin/rspec
+    echo $FILES_LIST | xargs docker-compose exec -T $(dkc-executable-container) ./bin/rspec
   fi
 }
 function cucumber-changed {
@@ -45,7 +48,7 @@ function cucumber-changed {
       | grep '\.feature$')
     echo Running changed Cucumber files:
     echo $FILES_LIST | xargs -I% echo "- %"
-    echo $FILES_LIST | xargs docker-compose exec -T spring ./bin/cucumber
+    echo $FILES_LIST | xargs docker-compose exec -T $(dkc-executable-container) ./bin/cucumber
   fi
 }
 
