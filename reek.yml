@@ -4,6 +4,14 @@ detectors:
     enabled: false
   UtilityFunction:
     enabled: false
+  UncommunicativeParameterName:
+    accept:
+      - x
+      - y
+  UncommunicativeVariableName:
+    accept:
+      - x
+      - y
 directories:
   'app/controllers':
     InstanceVariableAssumption:

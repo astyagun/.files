@@ -25,6 +25,11 @@ Metrics/BlockLength:
   Exclude:
     - '**/*_spec.rb'
 
+Naming/MethodParameterName:
+  AllowedNames:
+    - x
+    - y
+
 Style/Documentation:
   Enabled: false
 Style/FrozenStringLiteralComment:
