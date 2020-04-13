@@ -29,6 +29,9 @@ Style/Documentation:
   Enabled: false
 Style/FrozenStringLiteralComment:
   Enabled: false
+Style/MethodCallWithArgsParentheses:
+  Enabled: true
+  EnforcedStyle: omit_parentheses
 
 RSpec/ContextWording:
   Prefixes:
