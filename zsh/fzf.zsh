@@ -39,3 +39,7 @@ export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -100'"
 
 source /usr/local/opt/fzf/shell/completion.zsh
 source /usr/local/opt/fzf/shell/key-bindings.zsh
+
+# Remap Ctrl+T from fzf back to original
+bindkey -M emacs '^X^T' fzf-file-widget
+bindkey -M emacs '^T' transpose-chars

@@ -1,19 +1,19 @@
+#############
+#  general  #
+#############
+
 source ~/.files/zsh/env.zsh
 source ~/.files/zsh/keyboard.zsh
 
-#########
-#  fzf  #
-#########
+##################
+#  integrations  #
+##################
 
-source ~/.files/zsh/fzf.zsh
 source /usr/local/opt/chruby/share/chruby/chruby.sh
-
-# Remap Ctrl+T from fzf back to original
-bindkey -M emacs '^X^T' fzf-file-widget
-bindkey -M emacs '^T' transpose-chars
+source ~/.files/zsh/fzf.zsh
 
 ###########
-#  Zinit  #
+#  zinit  #
 ###########
 
 ### Added by Zinit's installer
@@ -29,6 +29,10 @@ source "$HOME/.zinit/bin/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
 ### End of Zinit's installer chunk
+
+#############
+#  plugins  #
+#############
 
 source ~/.files/zsh/plugins.zsh
 
