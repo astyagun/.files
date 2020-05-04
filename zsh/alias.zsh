@@ -19,10 +19,10 @@ alias rspec='de rspec'
 alias teaspoon='de teaspoon'
 alias thor='de thor'
 function rake() {
-  docker-compose exec -e COLUMNS=`tput cols` -e LINES=`tput lines` $(dkc-executable-container) rake "$@"
+  docker-compose exec -e COLUMNS="$(tput cols)" -e LINES="$(tput lines)" "$(dkc-executable-container)" rake "$@"
 }
 function rspec-changed {
-  if [ $# -eq 0 -o $1 = '-h' -o $1 = '--help' ]; then
+  if [ $# -eq 0 ] || [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
     echo 'usage: rspec-changed <commit-ish>'
     echo
     echo 'Run RSpec tests changed in <commit-ish>'
@@ -32,12 +32,12 @@ function rspec-changed {
       | xargs ls 2>/dev/null \
       | grep '_spec\.rb$')
     echo Running changed RSpec files:
-    echo $FILES_LIST | xargs -I% echo "- %"
-    echo $FILES_LIST | xargs docker-compose exec -T $(dkc-executable-container) ./bin/rspec
+    echo "$FILES_LIST" | xargs -I% echo "- %"
+    echo "$FILES_LIST" | xargs docker-compose exec -T "$(dkc-executable-container)" ./bin/rspec
   fi
 }
 function cucumber-changed {
-  if [ $# -eq 0 -o $1 = '-h' -o $1 = '--help' ]; then
+  if [ $# -eq 0 ] || [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
     echo 'usage: cucumber-changed <commit-ish>'
     echo
     echo 'Run Cucumber tests changed in <commit-ish>'
@@ -47,8 +47,8 @@ function cucumber-changed {
       | xargs ls 2>/dev/null \
       | grep '\.feature$')
     echo Running changed Cucumber files:
-    echo $FILES_LIST | xargs -I% echo "- %"
-    echo $FILES_LIST | xargs docker-compose exec -T $(dkc-executable-container) ./bin/cucumber
+    echo "$FILES_LIST" | xargs -I% echo "- %"
+    echo "$FILES_LIST" | xargs docker-compose exec -T "$(dkc-executable-container)" ./bin/cucumber
   fi
 }
 
@@ -72,7 +72,6 @@ alias _killdns='sudo kill -HUP `pidof mDNSResponder`'
 # Utils
 alias findswp="find ./ -type f -name \".*.sw[op]\""
 alias rmswp="findswp X rm"
-alias dfh='df | grep disk | awk "{print \$4}"'
 # Show biggest files in `tmutil compare` output
 # "+ 123M ..." -> "1M + 123M ..."
 alias tmutil-compare-sort="sed -E 's/^([+-\!] [0-9\.]+)([A-Z])/1\2 \1\2/' | sort -h -k 1,1 -k 3,3g"
