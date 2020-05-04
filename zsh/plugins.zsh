@@ -1,11 +1,11 @@
 function zinit_prezto_module() {
   zinit ice wait svn lucid
-  zinit snippet PZT::modules/$1
+  zinit snippet "PZT::modules/$1"
 }
 
 function zinit_omz_completion_plugin() {
   zinit ice wait as'completion' svn lucid
-  zinit snippet OMZ::plugins/$1
+  zinit snippet "OMZ::plugins/$1"
 }
 
 # Zsh setup {{{
@@ -64,8 +64,15 @@ zinit light ael-code/zsh-colored-man-pages
 # }}} Visual
 
 # chruby {{{
-zinit ice atload'chruby ruby-2.7' lucid
+
+# When Vim starts, it runs `zsh -lc env` and needs to see Ruby `bin` directories in `$PATH` there, so run `chruby`
+# synchronously, when `env` command is run. When `chruby` is run asynchronously, `zsh -lc env` won't have `chruby` paths
+# in its output.
+CHRUBY_WAIT=$(echo "$ZSH_EXECUTION_STRING" | grep -q '^(\?env\b' || echo 'wait')
+
+zinit ice ${CHRUBY_WAIT} atload'chruby ruby-2.7' lucid
 zinit snippet /usr/local/opt/chruby/share/chruby/chruby.sh
+
 # }}} chruby
 
 # Syntax highlighting, to be loaded last, also atinit'' executes callbacks for completions {{{
