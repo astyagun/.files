@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+
+# Underscore current working directory Markdown files
+
+Dir.glob('*.md').reject(&File.method(:directory?)).each do |file_name|
+  new_file_name = file_name
+    .gsub(/[^а-яА-ЯёЁa-zA-Z0-9._]+/, '_')
+    .gsub(/_{2,}/, '_')
+    .sub(/^_+/, '')
+    .sub(/_+\.md/, '.md')
+  File.rename file_name, new_file_name
+end
