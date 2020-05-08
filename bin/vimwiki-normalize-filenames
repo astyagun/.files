@@ -2,11 +2,13 @@
 
 # Underscore current working directory Markdown files
 
+SEPARATOR = ' '
+
 Dir.glob('*.md').reject(&File.method(:directory?)).each do |file_name|
   new_file_name = file_name
-    .gsub(/[^а-яА-ЯёЁa-zA-Z0-9._]+/, '_')
-    .gsub(/_{2,}/, '_')
-    .sub(/^_+/, '')
-    .sub(/_+\.md/, '.md')
+    .gsub(/[^а-яА-ЯёЁa-zA-Z0-9._-]+/, SEPARATOR)
+    .gsub(/#{SEPARATOR}{2,}/, SEPARATOR)
+    .sub(/^#{SEPARATOR}+/, '')
+    .sub(/#{SEPARATOR}+\.md/, '.md')
   File.rename file_name, new_file_name
 end
