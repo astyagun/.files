@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+# Find Vimwiki notes, in which the first line is not a header
+# The output is Vim grep compatible
+
+find . -name '*.md' | ruby -ne 'file_name = $_.chomp; puts file_name.concat(":1:1:#{$_}") unless open(file_name, &:gets).start_with? "#"'
