@@ -17,6 +17,8 @@ coverage/
 log/
 node_modules/
 plugged/
+public/packs
+public/packs-test
 public/uploads
 spec/cassettes/
 tags
