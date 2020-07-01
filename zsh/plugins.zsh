@@ -70,10 +70,8 @@ zinit light ael-code/zsh-colored-man-pages
 
 # chruby {{{
 
-# When Vim starts, it runs `zsh -lc env` and needs to see Ruby `bin` directories in `$PATH` there, so run `chruby`
-# synchronously, when `env` command is run. When `chruby` is run asynchronously, `zsh -lc env` won't have `chruby` paths
-# in its output.
-CHRUBY_WAIT=$(echo "$ZSH_EXECUTION_STRING" | grep -q '^(\?env\b' || echo 'wait')
+# Make `chruby` available when Zsh is run from MacVim
+CHRUBY_WAIT=$([[ -z "$VIM" ]] && echo wait)
 
 zinit ice ${CHRUBY_WAIT} atload'chruby ruby-2.7' lucid
 zinit snippet /usr/local/opt/chruby/share/chruby/chruby.sh
