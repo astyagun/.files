@@ -7,4 +7,5 @@ ABSOLUTE_FILE_PATH = File.expand_path RELATIVE_FILE_PATH
 RELATIVE_TO_WIKI_ROOT_FILE_PATH = ABSOLUTE_FILE_PATH.delete_prefix WIKI_ROOT_PATH
 WIKI_URL = "wiki://#{RELATIVE_TO_WIKI_ROOT_FILE_PATH}".gsub ' ', '%20'
 
+ENV['LANG'] = 'ru_RU.UTF-8'
 system "echo #{WIKI_URL} | pbcopy"
