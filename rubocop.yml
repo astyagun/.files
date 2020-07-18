@@ -38,6 +38,8 @@ Style/FrozenStringLiteralComment:
 Style/MethodCallWithArgsParentheses:
   Enabled: true
   EnforcedStyle: omit_parentheses
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
 
 RSpec/ContextWording:
   Prefixes:
