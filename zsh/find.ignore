@@ -8,6 +8,8 @@
 .git/
 .keep
 .netrwhist*
+.pioenvs/
+.piolibdeps/
 GPATH
 GRTAGS
 GTAGS
