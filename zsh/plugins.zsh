@@ -30,7 +30,8 @@ zstyle ':prezto:module:utility:wdiff' color 'yes'
 zstyle ':prezto:module:utility:make' color 'yes'
 zstyle ':prezto:module:utility' correct 'yes'
 zstyle ':prezto:module:utility' safe-ops 'yes'
-zinit_prezto_module utility
+zinit ice wait svn lucid atload'alias _ >/dev/null && unalias _'
+zinit snippet PZT::modules/utility
 
 zinit_prezto_module git
 zinit_prezto_module homebrew
