@@ -6,6 +6,7 @@
 .bundle
 .docker-sync/
 .git/
+.jekyll-cache/
 .keep
 .netrwhist*
 .pioenvs/
@@ -13,6 +14,7 @@
 GPATH
 GRTAGS
 GTAGS
+_site/
 app/assets/javascripts/i18n/
 build-uno/
 coverage/
