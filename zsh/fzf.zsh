@@ -28,7 +28,7 @@ EOF
 FZF_PREVIEW_OPTION_VALUE=$(cat <<-EOF | tr "\n" ' '
 [[ \$(file --mime {}) =~ binary ]] && echo {} is a binary file
 || [ -d {} ] && tree -C {}
-|| (bat $FZF_PREVIEW_BAT_OPTIONS {} || cat {}) 2> /dev/null
+|| (bat $FZF_PREVIEW_BAT_OPTIONS {} || head -n\$FZF_PREVIEW_LINES {}) 2> /dev/null
 | head -500
 EOF
 )
