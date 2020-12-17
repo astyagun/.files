@@ -25,21 +25,27 @@ Layout/SpaceInsideHashLiteralBraces:
 Metrics/BlockLength:
   Exclude:
     - '**/*_spec.rb'
+    - config/environments/*.rb
 
 Naming/MethodParameterName:
   AllowedNames:
     - x
     - y
 
-Style/Documentation:
-  Enabled: false
-Style/FrozenStringLiteralComment:
-  Enabled: false
+Style/Documentation: {Enabled: false}
+Style/FrozenStringLiteralComment: {Enabled: false}
 Style/MethodCallWithArgsParentheses:
   Enabled: true
   EnforcedStyle: omit_parentheses
 Style/StringLiterals:
   EnforcedStyle: double_quotes
+
+Rails/WhereExists:
+  Enabled: true
+  EnforcedStyle: where
+Rails/ShortI18n:
+  Enabled: true
+  EnforcedStyle: aggressive
 
 RSpec/ContextWording:
   Prefixes:
@@ -56,10 +62,9 @@ RSpec/ExampleLength:
     - 'spec/integration/**/*_spec.rb'
     - 'spec/requests/**/*_spec.rb'
     - 'spec/system/**/*_spec.rb'
-RSpec/ExpectChange:
-  Enabled: false
-RSpec/LetSetup:
-  Enabled: false
+RSpec/ExpectChange: {Enabled: false}
+RSpec/Capybara/FeatureMethods: {Enabled: false}
+RSpec/LetSetup: {Enabled: false}
 RSpec/MultipleExpectations:
   Exclude:
     - 'spec/features/**/*_spec.rb'
@@ -107,13 +112,11 @@ Rails/MatchRoute: {Enabled: true}
 Rails/NegateInclude: {Enabled: true}
 Rails/Pluck: {Enabled: true}
 Rails/PluckId: {Enabled: true}
-Rails/PluckInWhere: {Enabled: true, EnforcedStyle: aggressive}
+Rails/PluckInWhere: {Enabled: true}
 Rails/RenderInline: {Enabled: true}
 Rails/RenderPlainText: {Enabled: true}
-Rails/ShortI18n: {Enabled: true, EnforcedStyle: aggressive}
 Rails/SquishedSQLHeredocs: {Enabled: true}
 Rails/WhereEquals: {Enabled: true}
-Rails/WhereExists: {Enabled: true, EnforcedStyle: where}
 Rails/WhereNot: {Enabled: true}
 Style/AccessorGrouping: {Enabled: false}
 Style/ArgumentsForwarding: {Enabled: true}
