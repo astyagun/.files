@@ -22,10 +22,15 @@ Layout/MultilineMethodCallIndentation:
 Layout/SpaceInsideHashLiteralBraces:
   EnforcedStyle: no_space
 
+Lint/AmbiguousBlockAssociation:
+  Exclude:
+    - '**/*_spec.rb'
+
 Metrics/BlockLength:
   Exclude:
     - '**/*_spec.rb'
     - config/environments/*.rb
+    - spec/swagger_helper.rb
 
 Naming/MethodParameterName:
   AllowedNames:
@@ -55,20 +60,25 @@ RSpec/ContextWording:
     - without
 RSpec/DescribeClass:
   Exclude:
-    - 'spec/integration/**/*_spec.rb'
+    - spec/integration/**/*_spec.rb
+    - spec/requests/**/*_spec.rb
+RSpec/EmptyExampleGroup:
+  Exclude:
+    - spec/requests/api/**/*_spec.rb
 RSpec/ExampleLength:
   Exclude:
-    - 'spec/features/**/*_spec.rb'
-    - 'spec/integration/**/*_spec.rb'
-    - 'spec/requests/**/*_spec.rb'
-    - 'spec/system/**/*_spec.rb'
+    - spec/features/**/*_spec.rb
+    - spec/integration/**/*_spec.rb
+    - spec/requests/**/*_spec.rb
+    - spec/system/**/*_spec.rb
 RSpec/ExpectChange: {Enabled: false}
 RSpec/Capybara/FeatureMethods: {Enabled: false}
 RSpec/LetSetup: {Enabled: false}
 RSpec/MultipleExpectations:
   Exclude:
-    - 'spec/features/**/*_spec.rb'
-    - 'spec/system/**/*_spec.rb'
+    - spec/features/**/*_spec.rb
+    - spec/system/**/*_spec.rb
+RSpec/MultipleMemoizedHelpers: {Enabled: false}
 RSpec/NestedGroups:
   Max: 5
 
@@ -76,15 +86,20 @@ RSpec/NestedGroups:
 
 Layout/EmptyLinesAroundAttributeAccessor: {Enabled: true}
 Layout/SpaceAroundMethodCallOperator: {Enabled: true}
+Layout/SpaceBeforeBrackets: {Enabled: true}
+Lint/AmbiguousAssignment: {Enabled: true}
+Lint/DeprecatedConstants: {Enabled: true}
 Lint/DeprecatedOpenSSLConstant: {Enabled: true}
 Lint/DuplicateBranch: {Enabled: true}
 Lint/DuplicateElsifCondition: {Enabled: true}
 Lint/DuplicateRegexpCharacterClassElement: {Enabled: true}
 Lint/EmptyBlock: {Enabled: true}
 Lint/EmptyClass: {Enabled: true}
+Lint/LambdaWithoutLiteralBlock: {Enabled: true}
 Lint/MixedRegexpCaptureTypes: {Enabled: true}
 Lint/NoReturnInBeginEndBlocks: {Enabled: true}
 Lint/RaiseException: {Enabled: true}
+Lint/RedundantDirGlobSort: {Enabled: true}
 Lint/StructNewOverride: {Enabled: true}
 Lint/ToEnumArguments: {Enabled: true}
 Lint/UnexpectedBlockArity: {Enabled: true}
@@ -125,9 +140,11 @@ Style/BisectedAttrAccessor: {Enabled: true}
 Style/CaseLikeIf: {Enabled: true}
 Style/CollectionCompact: {Enabled: true}
 Style/DocumentDynamicEvalDefinition: {Enabled: true}
+Style/EndlessMethod: {Enabled: true}
 Style/ExponentialNotation: {Enabled: true}
 Style/HashAsLastArrayItem: {Enabled: false}
 Style/HashEachMethods: {Enabled: true}
+Style/HashExcept: {Enabled: true}
 Style/HashLikeCase: {Enabled: true}
 Style/HashTransformKeys: {Enabled: true}
 Style/HashTransformValues: {Enabled: true}
