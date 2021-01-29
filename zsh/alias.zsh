@@ -13,12 +13,12 @@ alias up='dksyn start; dkcU'
 
 # Ruby and Rails in Docker
 alias bundle='de bundle'
-alias cucumber='det cucumber'
+alias cucumber='det spring cucumber'
 alias jekyll='dr jekyll'
-alias rails='de rails'
-alias rspec='det rspec'
-alias teaspoon='det teaspoon'
-alias thor='de thor'
+alias rails='de spring rails'
+alias rspec='det spring rspec'
+alias teaspoon='det spring teaspoon'
+alias thor='de spring thor'
 
 function rake() {
   docker-compose exec -e COLUMNS="$(tput cols)" -e LINES="$(tput lines)" "$(dkc-executable-container)" rake "$@"
