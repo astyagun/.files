@@ -28,14 +28,20 @@ function rspec-changed {
     echo 'usage: rspec-changed <commit-ish>'
     echo
     echo 'Run RSpec tests changed in <commit-ish>'
+    echo
+    echo 'Example: rspec-changed master..HEAD'
   else
     FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$@" \
       | grep -e '^spec' \
       | xargs ls 2>/dev/null \
       | grep '_spec\.rb$')
+    DOCKER_CONTAINER=$(dkc-executable-container)
+    SPRING_PREFIX=""
+    if [[ "$DOCKER_CONTAINER" == "spring" ]]; then SPRING_PREFIX="spring"; fi
+
     echo Running changed RSpec files:
     echo "$FILES_LIST" | xargs -I% echo "- %"
-    echo "$FILES_LIST" | xargs docker-compose exec -T "$(dkc-executable-container)" ./bin/rspec
+    echo "$FILES_LIST" | xargs docker-compose exec -T $DOCKER_CONTAINER $SPRING_PREFIX rspec
   fi
 }
 function cucumber-changed {
@@ -43,14 +49,20 @@ function cucumber-changed {
     echo 'usage: cucumber-changed <commit-ish>'
     echo
     echo 'Run Cucumber tests changed in <commit-ish>'
+    echo
+    echo 'Example: cucumber-changed master..HEAD'
   else
     FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$@" \
       | grep -e '^features' \
       | xargs ls 2>/dev/null \
       | grep '\.feature$')
+    DOCKER_CONTAINER=$(dkc-executable-container)
+    SPRING_PREFIX=""
+    if [[ "$DOCKER_CONTAINER" == "spring" ]]; then SPRING_PREFIX="spring"; fi
+
     echo Running changed Cucumber files:
     echo "$FILES_LIST" | xargs -I% echo "- %"
-    echo "$FILES_LIST" | xargs docker-compose exec -T "$(dkc-executable-container)" ./bin/cucumber
+    echo "$FILES_LIST" | xargs docker-compose exec -T $DOCKER_CONTAINER $SPRING_PREFIX cucumber
   fi
 }
 
