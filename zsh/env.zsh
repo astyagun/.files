@@ -6,7 +6,7 @@ export LESS='-F -g -i -M -R -w -X -z-4'
 PATH=$(cat <<-EOF | tr "\n" ':' | sed 's/:*$//g'
 $HOME/bin
 $HOME/.files/bin
-$HOME/Library/Python/3.7/bin
+$(echo $HOME/Library/Python/*/bin | sed 's/ /:/g')
 $PATH
 EOF
 )
