@@ -7,6 +7,7 @@ PATH=$(cat <<-EOF | tr "\n" ':' | sed 's/:*$//g'
 $HOME/bin
 $HOME/.files/bin
 $(echo $HOME/Library/Python/*/bin | sed 's/ /:/g')
+/usr/local/sbin
 $PATH
 EOF
 )
