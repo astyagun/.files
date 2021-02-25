@@ -18,6 +18,7 @@ _site/
 app/assets/javascripts/i18n/
 build-uno/
 coverage/
+history/yankring_history_v2.txt
 log/
 node_modules/
 plugged/
