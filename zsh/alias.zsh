@@ -24,14 +24,19 @@ function rake() {
   docker-compose exec -e COLUMNS="$(tput cols)" -e LINES="$(tput lines)" "$(dkc-executable-container)" rake "$@"
 }
 function rspec-changed {
-  if [ $# -eq 0 ] || [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
-    echo 'usage: rspec-changed <commit-ish>'
+  if [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
+    echo 'usage: rspec-changed [<commit-ish>]'
     echo
-    echo 'Run RSpec tests changed in <commit-ish>'
+    echo 'Run RSpec tests changed in <commit-ish> or in master..HEAD'
     echo
-    echo 'Example: rspec-changed master..HEAD'
+    echo 'Example: rspec-changed somebranch..HEAD'
   else
-    FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$@" \
+    if [ $# -eq 0 ]; then
+      COMMITISH="master..HEAD"
+    else
+      COMMITISH="$@"
+    fi
+    FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$COMMITISH" \
       | grep -e '^spec' \
       | xargs ls 2>/dev/null \
       | grep '_spec\.rb$')
@@ -45,14 +50,19 @@ function rspec-changed {
   fi
 }
 function cucumber-changed {
-  if [ $# -eq 0 ] || [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
-    echo 'usage: cucumber-changed <commit-ish>'
+  if [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
+    echo 'usage: cucumber-changed [<commit-ish>]'
     echo
-    echo 'Run Cucumber tests changed in <commit-ish>'
+    echo 'Run Cucumber tests changed in <commit-ish> or in master..HEAD'
     echo
-    echo 'Example: cucumber-changed master..HEAD'
+    echo 'Example: cucumber-changed somebranch..HEAD'
   else
-    FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$@" \
+    if [ $# -eq 0 ]; then
+      COMMITISH="master..HEAD"
+    else
+      COMMITISH="$@"
+    fi
+    FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$COMMITISH" \
       | grep -e '^features' \
       | xargs ls 2>/dev/null \
       | grep '\.feature$')
