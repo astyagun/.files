@@ -2,16 +2,17 @@
 alias de='dkce $(dkc-executable-container)'
 alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
 alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
-alias dksyn='docker-sync'
-alias dksynl='dksyn logs'
-alias dksynr='dksyn stop && dksyn start'
-alias dksynw="watch 'docker-sync logs | tail -n40'"
-alias down='dkcd; dksyn clean'
-alias dr='dkce ruby'
-alias ds='dkce spring'
-alias start='dksyn start &; dkcU &; wait'
-alias stop='dksyn stop &; dkcx &; wait'
-alias up='dksyn start; dkcU'
+alias down='dkcd; ds clean'
+alias ds='docker-sync'
+alias dsd='ds clean'
+alias dsl='ds logs'
+alias dsr='ds restart'
+alias dss='ds start'
+alias dsw="watch 'docker-sync logs | tail -n40'"
+alias dsx='ds stop'
+alias start='ds start &; dkcU &; wait'
+alias stop='ds stop &; dkcx &; wait'
+alias up='ds start; dkcU'
 
 # Ruby and Rails in Docker
 alias bundle='de bundle'
