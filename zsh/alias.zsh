@@ -2,6 +2,7 @@
 alias de='dkce $(dkc-executable-container)'
 alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
 alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
+alias dkc-executable-container='test -f bin/rails && echo spring || echo ruby'
 alias down='dkcd; ds clean'
 alias ds='docker-sync'
 alias dsd='ds clean'
