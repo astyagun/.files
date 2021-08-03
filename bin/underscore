@@ -3,5 +3,5 @@
 require "active_support/core_ext/string/inflections"
 
 STDIN.lines do |line|
-  puts line.underscore.gsub(" ", "_").gsub(/[:']/, "")
+  puts line.underscore.gsub(" ", "_").gsub(/[:'"]/, "")
 end
