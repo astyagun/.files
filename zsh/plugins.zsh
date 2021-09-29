@@ -36,7 +36,7 @@ zinit snippet PZT::modules/utility
 zinit_prezto_module git
 zinit_prezto_module homebrew
 
-zinit ice wait lucid
+zinit ice wait lucid ver"3ae6d991e860f4e5fd83b33678af73c6acc02d2b"
 zinit light akarzim/zsh-docker-aliases
 
 zinit ice wait lucid
