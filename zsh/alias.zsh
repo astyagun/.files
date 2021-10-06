@@ -106,14 +106,20 @@ alias tmutil-compare-sort="sed -E 's/^([+-\!] [0-9\.]+)([A-Z])/1\2 \1\2/' | sort
 alias brewu='brew update && brew upgrade && brew cleanup'
 
 # -g utils
-alias -g M='| more'
 alias -g L='| less'
+alias -g M='| more'
+
 alias -g H='| head'
 alias -g T='| tail'
+
 alias -g G='| grep'
+alias -g R='| rg'
+
 alias -g X='| xargs'
 alias -g C='| strip-colors'
+
 alias -g LL="2>&1 | less"
 alias -g NE="2> /dev/null"
 alias -g NUL="> /dev/null 2>&1"
+
 alias -g GR='$(git rev-parse --show-toplevel)' # Git root
