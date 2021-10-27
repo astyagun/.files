@@ -16,6 +16,7 @@ alias stop='ds stop &; dkcx &; wait'
 alias up='ds start; dkcU'
 
 # Ruby and Rails in Docker
+alias be='bundle exec'
 alias bundle='de bundle'
 alias cucumber='det spring cucumber'
 alias jekyll='dr jekyll'
