@@ -86,8 +86,6 @@ alias grr='git rerebase'
 alias gbP='git branch-purge'
 
 # Ping & trace
-alias -g wr='10.0.1.1'
-alias -g pc='10.0.1.2'
 alias -g ya='77.88.21.3'
 alias -g ga='8.8.8.8'
 alias pingg='ping google.com'
