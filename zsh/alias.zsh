@@ -37,14 +37,11 @@ function rspec-changed {
     echo 'Example: rspec-changed somebranch..HEAD'
   else
     if [ $# -eq 0 ]; then
-      COMMITISH="master..HEAD"
+      COMMITISH="master"
     else
       COMMITISH="$@"
     fi
-    FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$COMMITISH" \
-      | grep -e '^spec' \
-      | xargs ls 2>/dev/null \
-      | grep '_spec\.rb$')
+    FILES_LIST=$(git diff --name-only "$COMMITISH" | grep -e '^spec/.*_spec\.rb$')
     DOCKER_CONTAINER=$(dkc-executable-container)
     SPRING_PREFIX=""
     if [[ "$DOCKER_CONTAINER" == "spring" ]]; then SPRING_PREFIX="spring"; fi
@@ -63,14 +60,11 @@ function cucumber-changed {
     echo 'Example: cucumber-changed somebranch..HEAD'
   else
     if [ $# -eq 0 ]; then
-      COMMITISH="master..HEAD"
+      COMMITISH="master"
     else
       COMMITISH="$@"
     fi
-    FILES_LIST=$(git diff-tree --no-commit-id --name-only -r "$COMMITISH" \
-      | grep -e '^features' \
-      | xargs ls 2>/dev/null \
-      | grep '\.feature$')
+    FILES_LIST=$(git diff --name-only "$COMMITISH" | grep -e '^features/.*\.feature$')
     DOCKER_CONTAINER=$(dkc-executable-container)
     SPRING_PREFIX=""
     if [[ "$DOCKER_CONTAINER" == "spring" ]]; then SPRING_PREFIX="spring"; fi
