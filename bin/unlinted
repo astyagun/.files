@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+
+# List files changed in current Git branch, that are ignored by Rubocop
+
+require 'yaml'
+
+RUBOCOP_WHITELIST_PATH = ".rubocop_whitelist.yml"
+
+EXCLUDED_FILES = YAML
+  .load_file(RUBOCOP_WHITELIST_PATH)
+  .fetch("AllCops")
+  .fetch("Exclude")
+  .map(&Dir.method(:glob))
+  .flatten
+CHANGED_FILES = `git diff --no-ext-diff --name-only master`
+  .lines
+  .map(&:chomp)
+
+puts EXCLUDED_FILES & CHANGED_FILES
+
+
