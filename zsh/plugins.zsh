@@ -71,11 +71,13 @@ zinit light ael-code/zsh-colored-man-pages
 
 # chruby {{{
 
-# Make `chruby` available when Zsh is run from MacVim
-CHRUBY_WAIT=$([[ -z "$VIM" ]] && echo wait)
+if [ -f $(brew --prefix)/opt/chruby/share/chruby/chruby.sh ]; then
+  # Make `chruby` available when Zsh is run from MacVim
+  CHRUBY_WAIT=$([[ -z "$VIM" ]] && echo wait)
 
-zinit ice ${CHRUBY_WAIT} atload'chruby ruby-2.7' lucid
-zinit snippet /usr/local/opt/chruby/share/chruby/chruby.sh
+  zinit ice ${CHRUBY_WAIT} atload'chruby ruby-2.7' lucid
+  zinit snippet $(brew --prefix)/opt/chruby/share/chruby/chruby.sh
+fi
 
 # }}} chruby
 

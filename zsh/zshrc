@@ -5,3 +5,6 @@ if [ -z "${ZSH_LOADED+x}" ]; then
 else
   source ~/.files/zsh/init.zsh
 fi
+
+# See `brew info fzf` for installation instructions
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh

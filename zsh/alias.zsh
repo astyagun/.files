@@ -91,12 +91,13 @@ alias _rndc='sudo rndc -p54 -s::1'
 alias _killdns='sudo kill -HUP `pidof mDNSResponder`'
 
 # Utils
+alias brewu='brew update && brew upgrade && brew cleanup'
 alias findswp="find ./ -type f -name \".*.sw[op]\""
+alias intel="arch -x86_64"
 alias rmswp="findswp X rm"
 # Show biggest files in `tmutil compare` output
 # "+ 123M ..." -> "1M + 123M ..."
 alias tmutil-compare-sort="sed -E 's/^([+-\!] [0-9\.]+)([A-Z])/1\2 \1\2/' | sort -h -k 1,1 -k 3,3g"
-alias brewu='brew update && brew upgrade && brew cleanup'
 
 # -g utils
 alias -g L='| less'
