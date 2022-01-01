@@ -20,4 +20,4 @@ function glob-alias {
   zle magic-space
 }
 zle -N glob-alias
-bindkey -M emacs "\C- " glob-alias
+bindkey -M emacs "^[ " glob-alias
