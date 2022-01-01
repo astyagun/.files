@@ -14,12 +14,12 @@
 # https://gist.github.com/astyagun/2c326e9b12e36f25e7ee01c7ccaa4656
 
 function tmux_sessions_count() {
-  tmux list-sessions 2>/dev/null | wc -l | tr -d '[:space:]'
+  /opt/homebrew/bin/tmux list-sessions 2>/dev/null | wc -l | tr -d '[:space:]'
 }
 
 function request_session_number_from_user() {
   echo There are several sessions open at the moment:
-  tmux list-sessions
+  /opt/homebrew/bin/tmux list-sessions
   echo n: new-session
   echo 'Please enter the number of session to attach to or "n" for a new session: '
   read -n1 SESSION
@@ -27,7 +27,7 @@ function request_session_number_from_user() {
 
 function get_session_number() {
   request_session_number_from_user
-  while [ ! $((tmux list-sessions | cut -d: -f1; echo n) | grep $SESSION) ]; do
+  while [ ! $((/opt/homebrew/bin/tmux list-sessions | cut -d: -f1; echo n) | grep $SESSION) ]; do
     print_error_message
     echo
     request_session_number_from_user
@@ -50,13 +50,13 @@ if [ $PWD = $HOME ]; then
     get_session_number
 
     if [ $SESSION = 'n' ]; then
-      tmux new-session
+      /opt/homebrew/bin/tmux new-session
     else
-      tmux attach-session -t $SESSION
+      /opt/homebrew/bin/tmux attach-session -t $SESSION
     fi
   else
-    tmux new-session
+    /opt/homebrew/bin/tmux new-session
   fi
 else
-  tmux new-session -c "$PWD"
+  /opt/homebrew/bin/tmux new-session -c "$PWD"
 fi
