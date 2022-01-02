@@ -47,15 +47,15 @@ zinit_omz_completion_plugin httpie
 # }}} Functions, aliases and completions
 
 # Navigation {{{
+
 alias cdc='code cd'
-alias cdn='notes cd'
 alias mydiraction_dispatch=_diraction-dispatch
 zinit ice wait \
   cp'__diraction-dispatch -> _mydiraction-dispatch' \
   atload'diraction create code ~/Code' \
-  atload'diraction create notes ~/Nextcloud/Заметки' \
   lucid
 zinit light AdrieanKhisbe/diractions
+
 # }}} Navigation
 
 # Visual {{{
