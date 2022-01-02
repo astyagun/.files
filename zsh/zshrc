@@ -1,9 +1,8 @@
 # Run init file only once
 # Since zlogin is a symlink to zshrc, this file is run twice during Zsh startup
-if [ -z "${ZSH_LOADED+x}" ]; then
-  export ZSH_LOADED=true
-else
+if [ -z "$ZSH_LOADED" ]; then
   source ~/.files/zsh/init.zsh
+  export ZSH_LOADED=true
 fi
 
 # See `brew info fzf` for installation instructions

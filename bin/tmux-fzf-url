@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# - Extract urls from a given file
+# - Show found URLs using tmux and fzf
+# - Open chosen URL in Safari
+
+# Extracted from https://github.com/wfxr/tmux-fzf-url/blob/master/fzf-url.sh
+
+[ -z "$1" ] && tmux display 'tmux-fzf-url: no argument given' && exit
+[ -f "$1" ] || (tmux display 'tmux-fzf-url: no file at given path' && exit)
+
+URLS=$(cat "$1" | grep -oE '(https?|ftp|file):/?//[-A-Za-z0-9+&@#/%?=~_|!:,.;]*[-A-Za-z0-9+&@#/%=~_|]' | grep -v '^$')
+
+[ -z "$URLS" ] && tmux display 'tmux-fzf-url: no URLs found' && exit
+
+echo "$URLS" | fzf-tmux -d 35% -m -0 --no-preview --no-border | xargs open -a Safari
