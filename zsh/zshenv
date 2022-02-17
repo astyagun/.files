@@ -3,7 +3,11 @@ export VISUAL='mvim -f'
 
 export LESS='-F -g -i -M -R -w -X -z-4'
 
-eval "$(/opt/homebrew/bin/brew shellenv)"
+if [ -f /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
 
 # For compiling Ruby gems
 # export LDFLAGS="-L/opt/homebrew/opt/ruby/lib"

@@ -13,13 +13,19 @@
 #
 # https://gist.github.com/astyagun/2c326e9b12e36f25e7ee01c7ccaa4656
 
+if [ -f /opt/homebrew/bin/brew ]; then
+  BREW_PREFIX=/opt/homebrew
+else
+  BREW_PREFIX=/usr/local
+fi
+
 function tmux_sessions_count() {
-  /opt/homebrew/bin/tmux list-sessions 2>/dev/null | wc -l | tr -d '[:space:]'
+  $BREW_PREFIX/bin/tmux list-sessions 2>/dev/null | wc -l | tr -d '[:space:]'
 }
 
 function request_session_number_from_user() {
   echo There are several sessions open at the moment:
-  /opt/homebrew/bin/tmux list-sessions
+  $BREW_PREFIX/bin/tmux list-sessions
   echo n: new-session
   echo 'Please enter the number of session to attach to or "n" for a new session: '
   read -n1 SESSION
@@ -27,7 +33,7 @@ function request_session_number_from_user() {
 
 function get_session_number() {
   request_session_number_from_user
-  while [ ! $((/opt/homebrew/bin/tmux list-sessions | cut -d: -f1; echo n) | grep $SESSION) ]; do
+  while [ ! $(($BREW_PREFIX/bin/tmux list-sessions | cut -d: -f1; echo n) | grep $SESSION) ]; do
     print_error_message
     echo
     request_session_number_from_user
@@ -50,13 +56,13 @@ if [ $PWD = $HOME ]; then
     get_session_number
 
     if [ $SESSION = 'n' ]; then
-      /opt/homebrew/bin/tmux new-session
+      $BREW_PREFIX/bin/tmux new-session
     else
-      /opt/homebrew/bin/tmux attach-session -t $SESSION
+      $BREW_PREFIX/bin/tmux attach-session -t $SESSION
     fi
   else
-    /opt/homebrew/bin/tmux new-session
+    $BREW_PREFIX/bin/tmux new-session
   fi
 else
-  /opt/homebrew/bin/tmux new-session -c "$PWD"
+  $BREW_PREFIX/bin/tmux new-session -c "$PWD"
 fi
