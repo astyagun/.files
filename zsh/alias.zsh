@@ -26,7 +26,7 @@ alias teaspoon='det spring teaspoon'
 alias thor='de spring thor'
 
 function rake() {
-  docker-compose exec -e COLUMNS="$(tput cols)" -e LINES="$(tput lines)" "$(dkc-executable-container)" rake "$@"
+  docker compose exec -e COLUMNS="$(tput cols)" -e LINES="$(tput lines)" "$(dkc-executable-container)" rake "$@"
 }
 function rspec-changed {
   if [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
@@ -48,7 +48,7 @@ function rspec-changed {
 
     echo Running changed RSpec files:
     echo "$FILES_LIST" | xargs -I% echo "- %"
-    echo "$FILES_LIST" | xargs docker-compose exec -T $DOCKER_CONTAINER $SPRING_PREFIX rspec
+    echo "$FILES_LIST" | xargs docker compose exec -T $DOCKER_CONTAINER $SPRING_PREFIX rspec
   fi
 }
 function cucumber-changed {
@@ -71,7 +71,7 @@ function cucumber-changed {
 
     echo Running changed Cucumber files:
     echo "$FILES_LIST" | xargs -I% echo "- %"
-    echo "$FILES_LIST" | xargs docker-compose exec -T $DOCKER_CONTAINER $SPRING_PREFIX cucumber
+    echo "$FILES_LIST" | xargs docker compose exec -T $DOCKER_CONTAINER $SPRING_PREFIX cucumber
   fi
 }
 
