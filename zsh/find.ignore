@@ -5,6 +5,7 @@
 .DS_Store
 .bundle
 .docker-sync/
+.esphome/
 .git/
 .jekyll-cache/
 .keep
