@@ -24,3 +24,5 @@ $PATH
 EOF
 )
 export PATH
+
+source ~/.files/zsh/fzf_env.zsh
