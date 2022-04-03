@@ -80,15 +80,18 @@ alias grr='git rerebase'
 alias gbP='git branch-purge'
 
 # Ping & trace
-alias -g ya='77.88.21.3'
-alias -g ga='8.8.8.8'
+alias -g GA='8.8.8.8'
+alias -g RA='192.168.0.1'
+alias -g YA='77.88.21.3'
+alias mtrga='sudo mtr --curses GA'
+alias mtrya='sudo mtr --curses YA'
 alias pingg='ping google.com'
+alias pingr='ping RA'
 alias pingy='ping ya.ru'
-alias mtrga='sudo mtr --curses ga'
-alias mtrya='sudo mtr --curses ya'
-alias dscf='dscacheutil -flushcache'
-alias _rndc='sudo rndc -p54 -s::1'
+
 alias _killdns='sudo kill -HUP `pidof mDNSResponder`'
+alias _rndc='sudo rndc -p54 -s::1'
+alias dscf='dscacheutil -flushcache'
 
 # Utils
 alias brewu='brew update && brew upgrade && brew cleanup'
