@@ -25,4 +25,5 @@ EOF
 )
 export PATH
 
+source ~/.files/zsh/alias.zsh
 source ~/.files/zsh/fzf_env.zsh

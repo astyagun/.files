@@ -1,4 +1,3 @@
-source ~/.files/zsh/alias.zsh
 source ~/.files/zsh/fzf.zsh
 source ~/.files/zsh/keyboard.zsh
 
