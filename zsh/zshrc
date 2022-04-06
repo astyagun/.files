@@ -1,3 +1,8 @@
+# Homebrew autocompletions
+if type brew &>/dev/null; then
+  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+fi
+
 source ~/.files/zsh/fzf.zsh
 source ~/.files/zsh/keyboard.zsh
 
