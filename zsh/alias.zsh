@@ -1,4 +1,5 @@
 # Docker
+alias c=colima
 alias de='dkce $(dkc-executable-container)'
 alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
 alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
