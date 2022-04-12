@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+# Generate underscored Git branch name from STDIN
+
 STDIN.read.lines do |line|
-  puts line.strip.downcase.gsub(/\W+/, "_")
+  puts line.strip.downcase.gsub(/\W+/, "_").sub(/_+$/, '')
 end
