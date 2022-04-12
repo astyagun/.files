@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
 
-STDIN.lines do |line|
+STDIN.read.lines do |line|
   puts line.strip.downcase.gsub(/\W+/, "_")
 end
