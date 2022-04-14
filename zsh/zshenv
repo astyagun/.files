@@ -3,7 +3,7 @@ export VISUAL='mvim -f'
 
 export LESS='-F -g -i -M -R -w -X -z-4'
 
-if [ -f /opt/homebrew/bin/brew ]; then
+if [[ -f /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 else
   eval "$(/usr/local/bin/brew shellenv)"

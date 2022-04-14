@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/usr/bin/env bash
 # tmux shell for macOS Terminal application
 #
 # Starts tmux taking current directory and open tmux sessions into account
@@ -13,7 +13,7 @@
 #
 # https://gist.github.com/astyagun/2c326e9b12e36f25e7ee01c7ccaa4656
 
-if [ -f /opt/homebrew/bin/brew ]; then
+if [[ -f /opt/homebrew/bin/brew ]]; then
   BREW_PREFIX=/opt/homebrew
 else
   BREW_PREFIX=/usr/local
