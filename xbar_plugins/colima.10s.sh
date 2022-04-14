@@ -9,7 +9,11 @@ ICON_STOPPED='c | color=gray'
 START_ACTION="Start | shell='$THIS_FILE' param1=start"
 STOP_ACTION="Stop | shell='$THIS_FILE' param1=stop"
 
-eval "$(/opt/homebrew/bin/brew shellenv)"
+if [[ -f /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
 
 function colima_is_running() {
   [[ -f ~/.lima/colima/qemu.pid ]] && return 0 || return 1
