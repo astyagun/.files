@@ -15,10 +15,6 @@ else
   eval "$(/usr/local/bin/brew shellenv)"
 fi
 
-function colima_is_running() {
-  [[ -f ~/.lima/colima/qemu.pid ]] && return 0 || return 1
-}
-
 if [[ "$1" == 'start' ]]; then
   colima start && LIMA_INSTANCE=colima lima sudo sysctl -p
   exit
@@ -29,6 +25,12 @@ if [[ "$1" == 'stop' ]]; then
   exit
 fi
 
-echo "$(colima_is_running && echo "$ICON_RUNNING" || echo "$ICON_STOPPED")"
-echo '---'
-echo "$(colima_is_running && echo "$STOP_ACTION" || echo "$START_ACTION")"
+if [[ -f ~/.lima/colima/qemu.pid ]]; then
+  echo "$ICON_RUNNING"
+  echo '---'
+  echo "$STOP_ACTION"
+else
+  echo "$ICON_STOPPED"
+  echo '---'
+  echo "$START_ACTION"
+fi
