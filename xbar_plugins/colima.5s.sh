@@ -4,6 +4,7 @@
 
 THIS_FILE="$0"
 
+ICON_INBETWEEN='… | color=gray'
 ICON_RUNNING='C'
 ICON_STOPPED='c | color=gray'
 START_ACTION="Start | shell='$THIS_FILE' param1=start"
@@ -25,8 +26,12 @@ if [[ "$1" == 'stop' ]]; then
   exit
 fi
 
-if [[ -f ~/.lima/colima/qemu.pid ]]; then
+if [[ -S ~/.lima/colima/ssh.sock ]]; then
   echo "$ICON_RUNNING"
+  echo '---'
+  echo "$STOP_ACTION"
+elif [[ -f ~/.lima/colima/qemu.pid ]]; then
+  echo "$ICON_INBETWEEN"
   echo '---'
   echo "$STOP_ACTION"
 else
