@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 
 # Simple xbar plugin to control Colima VM
+#
+#  <xbar.title>Colima</xbar.title>
+#  <xbar.version>v1.0</xbar.version>
+#  <xbar.author>Anton Styagun</xbar.author>
+#  <xbar.author.github>astyagun</xbar.author.github>
+#  <xbar.desc>Show status and allow to start/stop Colima VM</xbar.desc>
+#  <xbar.dependencies>Colima, Lima</xbar.dependencies>
 
 THIS_FILE="$0"
 
