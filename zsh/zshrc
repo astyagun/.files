@@ -29,3 +29,4 @@ autoload -Uz _zinit
 #############
 
 source ~/.files/zsh/plugins.zsh
+source ~/.files/zsh/git-local-branch.zsh
