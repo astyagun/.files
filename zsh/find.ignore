@@ -27,7 +27,6 @@ public/packs
 public/packs-test
 public/uploads
 spec/cassettes/
-tags
 tmp/cache/
 tmp/capybara/
 tmp/pids/
