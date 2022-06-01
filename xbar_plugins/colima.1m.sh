@@ -15,7 +15,7 @@
 THIS_FILE="$0"
 
 ICON_RUNNING='C'
-ICON_STOPPED='c | color=gray'
+ICON_STOPPED='c'
 START_ACTION='Stopped'
 STOP_ACTION="Stop | shell='$THIS_FILE' param1=stop"
 
