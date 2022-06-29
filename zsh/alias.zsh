@@ -1,5 +1,8 @@
 # Docker
 alias c=colima
+alias ce='LIMA_INSTANCE=colima lima'
+alias cs='c start'
+alias cx='c stop'
 alias de='dkce $(dkc-executable-container)'
 alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
 alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
