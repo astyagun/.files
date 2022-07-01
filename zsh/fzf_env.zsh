@@ -34,5 +34,6 @@ EOF
 )
 FZF_PREVIEW_OPTION="--preview '$FZF_PREVIEW_OPTION_VALUE'"
 
-export FZF_DEFAULT_OPTS="--reverse --history $HOME/.local/share/fzf-history $FZF_BIND_OPTION $FZF_PREVIEW_OPTION"
 export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -100'"
+export FZF_CTRL_R_OPTS="--no-preview"
+export FZF_DEFAULT_OPTS="--reverse --history $HOME/.local/share/fzf-history $FZF_BIND_OPTION $FZF_PREVIEW_OPTION"
