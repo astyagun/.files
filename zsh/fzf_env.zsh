@@ -4,6 +4,7 @@ FZF_FD_COMMON_OPTIONS=$(cat <<-EOF | tr "\n" ' '
 --ignore-case
 --ignore-file ~/.files/zsh/find.ignore
 --no-ignore-vcs
+--strip-cwd-prefix
 EOF
 )
 
