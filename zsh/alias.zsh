@@ -80,8 +80,9 @@ function cucumber-changed {
 }
 
 # Git
-alias grr='git rerebase'
+alias cdg='cd $(git-root)'
 alias gbP='git branch-purge'
+alias grr='git rerebase'
 
 # Ping & trace
 alias -g GA='8.8.8.8'
