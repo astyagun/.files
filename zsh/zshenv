@@ -26,5 +26,7 @@ EOF
 )
 export PATH
 
+export BAT_STYLE=plain
+
 source ~/.files/zsh/alias.zsh
 source ~/.files/zsh/fzf_env.zsh
