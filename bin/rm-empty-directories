@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+fd .DS_Store -u | xargs rm -v
+fd -td -te | xargs rm -rv
