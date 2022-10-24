@@ -2,9 +2,32 @@
 
 # List tags defined for given Docker image
 
+set -e
+
 if [[ "$1" == '' ]]; then
   echo 'Argument missing'
   exit 1
 fi
 
-http get "https://registry.hub.docker.com/v2/repositories/${1}/tags" page_size==1024 | jq -r '.results[].name' | less --quit-if-one-screen
+JQ_FILTER=$(
+cat <<'EOF'
+  .results[]
+  | select(.tag_status == "active")
+  | {name, image: .images[]}
+  | select(
+    .image.status == "active"
+    and (
+      .image.architecture == "arm64"
+      or .image.architecture == "arm"
+      or .image.architecture == "amd64"
+      or .image.architecture == "386"
+    )
+  )
+  | [.name, .image.architecture, .image.variant, .image.digest]
+  | join(" ")
+EOF
+)
+
+curl -s "https://registry.hub.docker.com/v2/repositories/${1}/tags?page_size=1024" \
+  | jq -r "$JQ_FILTER" \
+  | less --quit-if-one-screen
