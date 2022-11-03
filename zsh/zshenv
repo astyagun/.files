@@ -13,6 +13,7 @@ fi
 # For compiling Ruby gems
 # export LDFLAGS="-L/opt/homebrew/opt/ruby/lib"
 # export CPPFLAGS="-I/opt/homebrew/opt/ruby/include"
+export IRB_HISTFILE=~/.irb_history
 
 PATH=$(cat <<-EOF | tr "\n" ':' | sed 's/:*$//g'
 $HOME/bin
