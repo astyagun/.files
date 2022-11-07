@@ -33,9 +33,11 @@ fi
 if [[ -S ~/.lima/colima/ssh.sock ]]; then
   echo "$ICON_RUNNING"
   echo '---'
+  echo 'Refresh | refresh=true'
   echo "$STOP_ACTION"
 else
   echo "$ICON_STOPPED"
   echo '---'
+  echo 'Refresh | refresh=true'
   echo "$START_ACTION"
 fi
