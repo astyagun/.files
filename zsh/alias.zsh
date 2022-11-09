@@ -1,13 +1,24 @@
 # Docker
+
+## Colima
 alias c=colima
 alias ce='LIMA_INSTANCE=colima lima'
 alias cs='c start'
 alias cx='c stop'
+
+## Start-stop
+alias down='dkcd; ds clean'
+alias start='ds start &; dkcU &; wait'
+alias stop='ds stop &; dkcx &; wait'
+alias up='ds start; dkcU'
+
+## Exec
 alias de='dkce $(dkc-executable-container)'
 alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
 alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
 alias dkc-executable-container='test -f bin/rails && echo spring || echo ruby'
-alias down='dkcd; ds clean'
+
+## docker-sync
 alias ds='docker-sync'
 alias dsd='ds clean'
 alias dsl='ds logs'
@@ -15,9 +26,6 @@ alias dsr='ds restart'
 alias dss='ds start'
 alias dsw="watch 'docker-sync logs | tail -n40'"
 alias dsx='ds stop'
-alias start='ds start &; dkcU &; wait'
-alias stop='ds stop &; dkcx &; wait'
-alias up='ds start; dkcU'
 
 # Ruby and Rails in Docker
 alias be='bundle exec'
