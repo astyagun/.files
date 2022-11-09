@@ -8,7 +8,7 @@ alias cx='c stop'
 
 ## Start-stop
 alias down='dkcd; ds clean'
-alias start='ds start &; dkcU &; wait'
+alias start='ds start &; dkcU &; wait; jobs'
 alias stop='ds stop &; dkcx &; wait'
 alias up='ds start; dkcU'
 
