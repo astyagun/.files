@@ -36,8 +36,11 @@ zinit snippet PZT::modules/utility
 zinit_prezto_module git
 zinit_prezto_module homebrew
 
-zinit ice wait lucid
-zinit light akarzim/zsh-docker-aliases
+# Original aliaes use `mutagen compose`, which is not available for me, I have `mutagen-compose` only. Use manually
+# updated aliases instead.
+# zinit ice wait atload"$MUTAGEN_ALIASES" lucid
+# zinit light akarzim/zsh-docker-aliases
+source ~/.files/zsh/docker-aliases.zsh
 
 zinit ice wait lucid
 zinit light djui/alias-tips
