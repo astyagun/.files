@@ -15,10 +15,12 @@ fi
 # export CPPFLAGS="-I/opt/homebrew/opt/ruby/include"
 export IRB_HISTFILE=~/.irb_history
 
+LATEST_RUBY_BIN=$(echo $HOMEBREW_PREFIX/lib/ruby/gems/*/bin | tr ' ' "\n" | tail -n1)
+
 PATH=$(cat <<-EOF | tr "\n" ':' | sed 's/:*$//g'
 $HOME/bin
 $HOME/.files/bin
-$HOMEBREW_PREFIX/lib/ruby/gems/3.0.0/bin
+$LATEST_RUBY_BIN
 $(echo $HOME/Library/Python/*/bin | sed 's/ /:/g')
 $HOMEBREW_PREFIX/opt/ruby/bin
 $HOMEBREW_PREFIX/opt/libpq/bin
