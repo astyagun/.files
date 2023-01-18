@@ -1,5 +1,5 @@
-export EDITOR=$VISUAL
-export VISUAL='mvim -f'
+export EDITOR='mvim -f'
+export VISUAL=$EDITOR
 
 export LESS='-F -g -i -M -R -w -X -z-4'
 export PATH="$PATH:/usr/sbin:/sbin"
