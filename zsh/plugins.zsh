@@ -71,6 +71,7 @@ SPACESHIP_PROMPT_ORDER=(
   battery       # Battery level and status
   jobs          # Background jobs indicator
   exit_code     # Exit code section
+  sudo          # Indicator when user has cached passwordless permissions
   char          # Prompt character
 )
 
@@ -84,6 +85,7 @@ SPACESHIP_EXIT_CODE_SHOW=true
 SPACESHIP_GIT_BRANCH_COLOR=238
 SPACESHIP_GIT_STATUS_COLOR=088
 SPACESHIP_PROMPT_PREFIXES_SHOW=false
+SPACESHIP_SUDO_SHOW=true
 
 zinit light spaceship-prompt/spaceship-prompt
 
