@@ -2,6 +2,7 @@
 
 ## Colima
 alias c=colima
+alias cS='c restart'
 alias ce='LIMA_INSTANCE=colima lima'
 alias cs='c start'
 alias cx='c stop'
