@@ -14,11 +14,13 @@ alias start='ds start &; dkcU &; wait; jobs'
 alias stop='ds stop &; dkcx &; wait'
 alias up='ds start; dkcU'
 
-## Exec
+## Docker Compose
 alias de='dkce $(dkc-executable-container)'
 alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
 alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
 alias dkc-executable-container='test -f bin/rails && echo spring || echo ruby'
+alias dkcpsa='dkcps -a'
+alias mgcpsa='mgcps -a'
 
 ## docker-sync
 alias ds='docker-sync'
