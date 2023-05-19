@@ -100,7 +100,7 @@ alias grr='git rerebase'
 # Ping & trace
 alias -g GA='8.8.8.8'
 alias -g RA='192.168.0.1'
-alias -g YA='77.88.21.3'
+alias -g YA='77.88.8.8'
 alias mtrga='sudo mtr --curses GA'
 alias mtrya='sudo mtr --curses YA'
 alias pingg='ping google.com'
