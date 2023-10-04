@@ -10,6 +10,7 @@ function zinit_omz_completion_plugin() {
 
 # Zsh setup {{{
 
+zstyle ':prezto:module:history' histsize 10000 # Fixes unavailability of history from previsou sessions for some reason
 zinit ice wait svn lucid
 zinit snippet PZT::modules/history
 
