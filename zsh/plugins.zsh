@@ -18,7 +18,6 @@ HISTORY_KEYS='bindkey -M emacs "^P" history-substring-search-up; bindkey -M emac
 zinit ice wait atload"$HISTORY_KEYS" lucid
 zinit light zsh-users/zsh-history-substring-search
 
-zinit_prezto_module completion
 zinit_prezto_module directory
 
 # }}} Zsh setup
@@ -47,6 +46,9 @@ zinit ice wait lucid
 zinit light djui/alias-tips
 
 zinit_omz_completion_plugin httpie
+
+zinit ice wait as'completion' svn lucid
+zinit light zsh-users/zsh-completions
 
 # }}} Functions, aliases and completions
 
@@ -106,6 +108,9 @@ if [ -f $(brew --prefix)/opt/chruby/share/chruby/chruby.sh ]; then
 fi
 
 # }}} chruby
+
+# Must be loaded after PZT utility and other completions
+zinit_prezto_module completion
 
 # Syntax highlighting, to be loaded last, also atinit'' executes callbacks for completions {{{
 export ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets cursor line pattern root)
