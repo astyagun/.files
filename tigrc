@@ -1,6 +1,4 @@
-
 set line-graphics = utf-8
-set main-options = --all
 
 # Key bindings
 # Taken most from https://github.com/jonas/tig/blob/master/contrib/vim.tigrc
