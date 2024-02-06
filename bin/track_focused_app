@@ -1,6 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 try:
+    # Requires: `pip3 install -U PyObjC`
     from AppKit import NSWorkspace
 except ImportError:
     print "Can't import AppKit -- maybe you're running python from brew?"
@@ -15,9 +16,9 @@ while True:
     active_app = NSWorkspace.sharedWorkspace().activeApplication()
     if active_app['NSApplicationName'] != last_active_name:
         last_active_name = active_app['NSApplicationName']
-        print '%s: %s [%s]' % (
+        print('%s: %s [%s]' % (
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             active_app['NSApplicationName'],
             active_app['NSApplicationPath']
-        )
+        ))
     sleep(1)
