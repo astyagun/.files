@@ -47,7 +47,7 @@ zinit light djui/alias-tips
 
 zinit_omz_completion_plugin httpie
 
-zinit ice wait as'completion' svn lucid
+zinit ice wait as'completion' lucid
 zinit light zsh-users/zsh-completions
 
 # }}} Functions, aliases and completions
