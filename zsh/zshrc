@@ -3,8 +3,8 @@ if type brew &>/dev/null; then
   FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 fi
 
-source ~/.files/zsh/fzf.zsh
 source ~/.files/zsh/keyboard.zsh
+source ~/.files/zsh/fzf.zsh # Should be loaded after keyboard.zsh
 
 ###########
 #  zinit  #
