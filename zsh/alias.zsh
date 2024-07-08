@@ -128,6 +128,7 @@ alias rmswp="findswp X rm"
 alias tmutil-compare-sort="sed -E 's/^([+-\!] [0-9\.]+)([A-Z])/1\2 \1\2/' | sort -h -k 1,1 -k 3,3g"
 
 # -g utils
+alias -g B='| bat --style=plain --color=always'
 alias -g L='| less'
 alias -g M='| more'
 
