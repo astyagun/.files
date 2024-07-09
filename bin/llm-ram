@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+
+# Based on https://tokarchuk.ru/2024/02/01/calculation-gpu-memory-for-serving-llms/
+
+begin
+  P = Float(ARGV[0])
+  Q = Integer(ARGV[1])
+rescue ArgumentError, TypeError => e
+  puts "Error, bad input: #{ e.message }"
+
+  puts <<~DOC
+
+    Calculate amount of RAM (or VRAM) required for LLM
+
+    Usage: #{ File.basename($0) } P Q
+
+    Where:
+    - P is number of parameters in billions, a Float or an Integer
+    - Q is quantization, an Integer
+  DOC
+  exit 1
+end
+
+puts <<~DESC
+M = (P * 4.0) / (32.0 / Q) * 1.2
+
+P = #{P}
+Q = #{Q}
+M = (#{P} * 4.0) / (32.0 / #{Q}) * 1.2
+DESC
+
+M = (P.to_f * 4.0) / (32.0 / Q.to_f) * 1.2
+
+puts
+puts "M = #{ M.round(2) } GB of RAM required"
