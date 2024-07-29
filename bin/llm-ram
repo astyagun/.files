@@ -2,6 +2,11 @@
 
 # Based on https://tokarchuk.ru/2024/02/01/calculation-gpu-memory-for-serving-llms/
 
+require 'bundler/inline'
+gemfile do
+  gem 'rainbow'
+end
+
 begin
   P = Float(ARGV[0])
   Q = Integer(ARGV[1])
@@ -21,7 +26,10 @@ rescue ArgumentError, TypeError => e
   exit 1
 end
 
-puts <<~DESC
+puts Rainbow(<<~DESC).faint
+
+Amount of RAM required to run an LLM:
+
 M = (P * 4.0) / (32.0 / Q) * 1.2
 
 P = #{P}
@@ -32,4 +40,4 @@ DESC
 M = (P.to_f * 4.0) / (32.0 / Q.to_f) * 1.2
 
 puts
-puts "M = #{ M.round(2) } GB of RAM required"
+puts "M = #{ Rainbow(M.round(2)).bright } GB of RAM required"
