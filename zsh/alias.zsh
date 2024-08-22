@@ -2,10 +2,10 @@
 
 ## Colima
 alias c=colima
-alias cS='c restart'
+alias cS='brew services restart colima'
 alias ce='LIMA_INSTANCE=colima lima'
-alias cs='c start'
-alias cx='c stop'
+alias cs='brew services start colima'
+alias cx='brew services stop colima'
 
 ## Start-stop
 alias down='dkcd; ds clean'
