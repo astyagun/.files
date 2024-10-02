@@ -117,6 +117,7 @@ alias brewu='brew update && brew upgrade && brew cleanup'
 alias findswp="find ./ -type f -name \".*.sw[op]\""
 alias intel="arch -x86_64"
 alias rmswp="findswp X rm"
+alias vidir='~/.vim/plugged/vidir/bin/vidir'
 
 # Show biggest files in `tmutil compare` output
 # "+ 123M ..." -> "1M + 123M ..."
