@@ -1,18 +1,61 @@
-function zinit_prezto_module() {
-  zinit ice wait svn lucid
-  zinit snippet "PZT::modules/$1"
+# Fix PZT and OMZ prefixes {{{
+
+# Source: https://github.com/zdharma-continuum/zinit/issues/504
+
+function _fix-pzt-module() {
+  if [[ ! -f ._zinit/teleid ]] then return 0; fi
+  if [[ ! $(cat ._zinit/teleid) =~ "^PZT::.*" ]] then return 0; fi
+  local PZTM_NAME=$(cat ._zinit/teleid | sed -n 's/PZT::modules\///p')
+  git clone --quiet --no-checkout --depth=1 --filter=tree:0 https://github.com/sorin-ionescu/prezto
+  cd prezto
+  git sparse-checkout set --no-cone modules/$PZTM_NAME
+  git checkout --quiet
+  cd ..
+  local file
+  for file in prezto/modules/$PZTM_NAME/*~(.gitignore|*.plugin.zsh)(D); do
+    local filename="${file:t}"
+    echo "Copying $file to $(pwd)/$filename..."
+    cp -R $file $filename
+  done
+  rm -rf prezto
 }
 
-function zinit_omz_completion_plugin() {
-  zinit ice wait as'completion' svn lucid
-  zinit snippet "OMZ::plugins/$1"
+function _fix-omz-plugin() {
+    [[ -f ./._zinit/teleid ]] || return 1
+    local teleid="$(<./._zinit/teleid)"
+    local pluginid
+    for pluginid (${teleid#OMZ::plugins/} ${teleid#OMZP::}) {
+      [[ $pluginid != $teleid ]] && break
+    }
+    (($?)) && return 1
+    print "Fixing $teleid..."
+    git clone --quiet --no-checkout --depth=1 --filter=tree:0 https://github.com/ohmyzsh/ohmyzsh
+    cd ./ohmyzsh
+    git sparse-checkout set --no-cone /plugins/$pluginid
+    git checkout --quiet
+    cd ..
+    local file
+    for file (./ohmyzsh/plugins/$pluginid/*~(.gitignore|*.plugin.zsh)(D)) {
+      print "Copying ${file:t}..."
+      cp -R $file ./${file:t}
+    }
+    rm -rf ./ohmyzsh
 }
+
+# }}} Fix PZT and OMZ prefixes
+
+function zinit_prezto_module() {
+  zinit wait lucid atpull"%atclone" atclone"_fix-pzt-module" for "PZT::modules/$1"
+}
+
+# Required for PZT:: prefix fix above
+zinit_prezto_module helper
+zinit_prezto_module spectrum
 
 # Zsh setup {{{
 
 zstyle ':prezto:module:history' histsize 10000 # Fixes unavailability of history from previsou sessions for some reason
-zinit ice wait svn lucid
-zinit snippet PZT::modules/history
+zinit_prezto_module history
 
 HISTORY_KEYS='bindkey -M emacs "^P" history-substring-search-up; bindkey -M emacs "^N" history-substring-search-down'
 zinit ice wait atload"$HISTORY_KEYS" lucid
@@ -30,8 +73,7 @@ zstyle ':prezto:module:utility:wdiff' color 'yes'
 zstyle ':prezto:module:utility:make' color 'yes'
 zstyle ':prezto:module:utility' correct 'yes'
 zstyle ':prezto:module:utility' safe-ops 'yes'
-zinit ice wait svn lucid atload'alias _ >/dev/null && unalias _'
-zinit snippet PZT::modules/utility
+zinit wait lucid atload'alias _ >/dev/null && unalias _' atpull"%atclone" atclone"_fix-pzt-module" for PZT::modules/utility
 
 zinit_prezto_module git
 zinit_prezto_module homebrew
@@ -44,8 +86,6 @@ source ~/.files/zsh/docker-aliases.zsh
 
 zinit ice wait lucid
 zinit light djui/alias-tips
-
-zinit_omz_completion_plugin httpie
 
 zinit ice wait as'completion' lucid
 zinit light zsh-users/zsh-completions
