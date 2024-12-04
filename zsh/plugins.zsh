@@ -84,6 +84,9 @@ zinit_prezto_module homebrew
 # zinit light akarzim/zsh-docker-aliases
 source ~/.files/zsh/docker-aliases.zsh
 
+zinit ice wait as'completion' lucid
+zinit light ocodo/ollama_zsh_completion
+
 zinit ice wait lucid
 zinit light djui/alias-tips
 
