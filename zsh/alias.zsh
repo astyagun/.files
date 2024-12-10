@@ -2,7 +2,7 @@
 
 ## Colima
 alias c=colima
-alias cS='brew services restart colima'
+alias cS='colima stop && brew services restart colima'
 alias ce='LIMA_INSTANCE=colima lima'
 alias cs='brew services start colima'
 alias cx='brew services stop colima'
