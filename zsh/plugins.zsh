@@ -65,31 +65,7 @@ zinit light AdrieanKhisbe/diractions
 
 # Visual {{{
 
-SPACESHIP_PROMPT_ORDER=(
-  dir           # Current directory section
-  git           # Git section (git_branch + git_status)
-  exec_time     # Execution time
-  line_sep      # Line break
-  battery       # Battery level and status
-  jobs          # Background jobs indicator
-  exit_code     # Exit code section
-  sudo          # Indicator when user has cached passwordless permissions
-  char          # Prompt character
-)
-
-SPACESHIP_CHAR_COLOR_FAILURE=088
-SPACESHIP_CHAR_COLOR_SECONDARY=094
-SPACESHIP_CHAR_COLOR_SUCCESS=022
-SPACESHIP_DIR_COLOR=022
-SPACESHIP_EXEC_TIME_COLOR=094
-SPACESHIP_EXEC_TIME_ELAPSED=5
-SPACESHIP_EXIT_CODE_SHOW=true
-SPACESHIP_GIT_BRANCH_COLOR=238
-SPACESHIP_GIT_STATUS_COLOR=088
-SPACESHIP_PROMPT_PREFIXES_SHOW=false
-SPACESHIP_SUDO_SHOW=true
-
-zinit light spaceship-prompt/spaceship-prompt
+eval "$(starship init zsh)"
 
 zinit ice wait lucid
 zinit light ael-code/zsh-colored-man-pages
