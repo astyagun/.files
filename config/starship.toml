@@ -1,6 +1,9 @@
 # Get editor completions based on the config schema
 "$schema" = 'https://starship.rs/config-schema.json'
 
+[directory]
+style = 'blue'
+
 [status]
 disabled = false
 symbol = ''
@@ -10,3 +13,14 @@ disabled = false
 format = "[$symbol]($style) "
 symbol = "⚡️"
 
+[git_branch]
+style = 'bold bright-black'
+
+[docker_context]
+disabled = true
+
+[python]
+disabled = true
+
+[nodejs]
+disabled = true
