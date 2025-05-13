@@ -46,9 +46,6 @@ zinit light ocodo/ollama_zsh_completion
 zinit ice wait lucid
 zinit light djui/alias-tips
 
-zinit ice wait as'completion' lucid
-zinit light zsh-users/zsh-completions
-
 # }}} Functions, aliases and completions
 
 # Navigation {{{
