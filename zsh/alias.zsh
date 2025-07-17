@@ -129,9 +129,10 @@ alias vidir='~/.vim/plugged/vidir/bin/vidir'
 alias tmutil-compare-sort="sed -E 's/^([+-\!] [0-9\.]+)([A-Z])/1\2 \1\2/' | sort -h -k 1,1 -k 3,3g"
 
 # -g utils
+alias -g A='&& say "Команда в терминале отработала успешно" || say "Команда в терминале завершилась с ошибкой"'
+
 alias -g B='| bat --style=plain --color=always'
 alias -g L='| less'
-alias -g M='| more'
 
 alias -g H='| head'
 alias -g T='| tail'
