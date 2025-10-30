@@ -17,12 +17,17 @@ export IRB_HISTFILE=~/.irb_history
 
 LATEST_RUBY_GEMS_BIN=$(echo $HOMEBREW_PREFIX/lib/ruby/gems/*/bin | tr ' ' "\n" | tail -n1)
 
+export DOTNET_ROOT=$HOME/.dotnet
+export DOTNET_CLI_TELEMETRY_OPTOUT=true
+
 PATH=$(cat <<-EOF | tr "\n" ':' | sed 's/:*$//g'
 $HOME/.files/bin
 $LATEST_RUBY_GEMS_BIN
 $(echo $HOME/Library/Python/*/bin | sed 's/ /:/g')
 $HOMEBREW_PREFIX/opt/ruby/bin
 $HOMEBREW_PREFIX/opt/libpq/bin
+$DOTNET_ROOT
+$DOTNET_ROOT/tools
 /usr/local/sbin
 $PATH
 EOF
