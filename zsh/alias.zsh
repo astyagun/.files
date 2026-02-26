@@ -113,6 +113,9 @@ alias _rndc='sudo rndc -p54 -s::1'
 alias dscf='dscacheutil -flushcache'
 
 # Utils
+alias ai=aichat
+alias aic=aichat -c
+alias aie=aichat -e
 alias brewu='brew update && brew upgrade && brew cleanup'
 alias findswp="find ./ -type f -name \".*.sw[op]\""
 alias intel="arch -x86_64"
