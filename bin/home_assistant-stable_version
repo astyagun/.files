@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+# Query Docker Hub to get Home Assistant versions from previous month.
+# The latest one is supposed to be the most stable one.
+
+docker-image-tags homeassistant/home-assistant | grep -F "$(date -v -1m +%Y.%-m.)"
