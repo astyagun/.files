@@ -38,5 +38,7 @@ export PATH
 
 export BAT_STYLE=plain
 
+export POISKKINO_TOKEN="$(cat ~/.files/poiskkino.token)"
+
 source ~/.files/zsh/alias.zsh
 source ~/.files/zsh/fzf_env.zsh
