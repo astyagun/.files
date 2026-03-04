@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# Combine a directory of JPEGs produced by RimWorld progress renderer mod into a single GIF file
+
+# 30 by default, can be overridden by the first argument
+FPS=${1:-30}
+
+ffmpeg -framerate "$FPS" -pattern_type glob -i '*.jpg' -vf "fps=$FPS,scale=1024:1024" output.gif
