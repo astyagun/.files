@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# Fetch web page HTML, even if it requires JavaScript rendering
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 <URL>"
+  exit 1
+fi
+
+export WEBPAGE_URL="$1"
+export NODE_PATH="/opt/homebrew/lib/node_modules"
+
+node -e "
+const process = require('process');
+const puppeteer = require('puppeteer');
+
+(async () => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15');
+  await page.setDefaultTimeout(60000);
+
+  await page.goto(process.env.WEBPAGE_URL, {waitUntil: 'networkidle2'});
+  await page.waitForNavigation();
+  const html = await page.content();
+
+  console.log(html);
+
+  await browser.close();
+})();
+"
