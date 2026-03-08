@@ -19,6 +19,7 @@ _site/
 app/assets/javascripts/i18n/
 build-uno/
 coverage/
+elm-stuff/
 engines/*/vendor/bundle
 history/yankring_history_v2.txt
 log/
