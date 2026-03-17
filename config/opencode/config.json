@@ -1,0 +1,93 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "username": "Anton",
+  "autoupdate": false,
+  "enabled_providers": ["ollama"],
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (local)",
+      "options": {
+        "baseURL": "http://localhost:11434/v1"
+      },
+      "models": {
+        "glm-4.7-flash:q8_0_131k": {
+          "name": "GLM 4.7 Flash",
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          }
+        },
+        "qwen3-coder:131k": {
+          "name": "Qwen 3 Coder",
+          "tools": true,
+          "reasoning": true,
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          }
+        },
+        "nemotron-3-nano:30b-a3b-q8_0-131k": {
+          "name": "Nemotron 3 Nano",
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          }
+        },
+        "devstral-small-2:24b-instruct-2512-fp16-131k": {
+          "name": "Devstral Small 2 fp16",
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          }
+        }
+      }
+    },
+    "llama.cpp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Llama.cpp with Qwen3 Coder (local)",
+      "options": {
+        "baseURL": "http://localhost:8012/v1"
+      },
+      "models": {
+        "qwen3-coder:a3b": {
+          "name": "Qwen 3 Coder",
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          }
+        }
+      }
+    },
+    "mlx": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "MLX (local)",
+      "options": {
+        "baseURL": "http://localhost:8080/v1"
+      },
+      "models": {
+        "mlx-community/Qwen3-Coder-30B-A3B-Instruct-8bit": {
+          "name": "Qwen 3 Coder",
+          "limit": {
+            "context": 128000,
+            "output": 65536
+          }
+        },
+        "mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-MLX-8Bit": {
+          "name": "Nemotron 3 Nano",
+          "limit": {
+            "context": 128000,
+            "output": 65536
+          }
+        },
+        "mlx-community/Devstral-Small-2-24B-Instruct-2512-8bit": {
+          "name": "Devstral Small 2",
+          "limit": {
+            "context": 128000,
+            "output": 65536
+          }
+        }
+      }
+    }
+  }
+}
