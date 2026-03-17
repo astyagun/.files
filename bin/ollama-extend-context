@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# Create a new Ollama model based on existing local model, but with context length of 131072
+
+if [[ -z "$1" ]]; then
+  echo "Usage: $(basename "$0") <model_name>"
+  exit 1
+fi
+
+MODEL_NAME="$1"
+
+# Check if model exists
+if ! ollama show "$MODEL_NAME" >/dev/null; then
+  exit 2
+fi
+
+if [[ "$MODEL_NAME" == *:* ]]; then
+  SEPARATOR="-"
+else
+  SEPARATOR=":"
+fi
+NEW_MODEL_NAME="${MODEL_NAME}${SEPARATOR}131k"
+
+# Check if new model exists
+if ollama show "$NEW_MODEL_NAME" >/dev/null 2>&1; then
+  echo "Error: model $NEW_MODEL_NAME already exists. Delete it first."
+  exit 3
+fi
+
+echo "Saving model as $NEW_MODEL_NAME with context length 131072..."
+
+OLLAMA_COMMANDS="/set parameter num_ctx 131072\n/save $NEW_MODEL_NAME"
+exec ollama run "$MODEL_NAME" "$OLLAMA_COMMANDS"
