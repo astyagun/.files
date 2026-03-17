@@ -4,12 +4,13 @@
 
 module.paths.unshift("/opt/homebrew/lib/node_modules"); // Use globally installed puppeteer
 
+const path = require('path');
 const process = require('process');
 const puppeteer = require('puppeteer');
 
 (async () => {
   if (process.argv.length < 3) {
-    console.error(`Usage: ${process.argv[0]} <URL>`);
+    console.error(`Usage: ${path.basename(process.argv[1])} <URL>`);
     process.exit(1);
   }
 
