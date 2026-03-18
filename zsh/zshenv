@@ -30,6 +30,7 @@ $HOMEBREW_PREFIX/opt/ruby/bin
 $HOMEBREW_PREFIX/opt/libpq/bin
 $DOTNET_ROOT
 $DOTNET_ROOT/tools
+/usr/local/bin
 /usr/local/sbin
 $PATH
 EOF
