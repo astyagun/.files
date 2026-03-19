@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.astyagun.vim-fim</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/llama-server</string>
+        <string>-m</string>
+        <string>/Users/astyagun/.ollama/models/blobs/sha256-1194192cf2a187eb02722edcc3f77b11d21f537048ce04b67ccf8ba78863006a</string>
+        <string>--port</string>
+        <string>8012</string>
+        <string>-ngl</string>
+        <string>99</string>
+        <string>-fa</string>
+        <string>on</string>
+        <string>-dt</string>
+        <string>0.1</string>
+
+        <string>--temp</string>
+        <string>0.4</string><!-- Was 0.7 originally -->
+        <string>--top-p</string>
+        <string>0.9</string>
+        <string>--top-k</string>
+        <string>20</string>
+        <string>--min-p</string>
+        <string>0.0</string>
+        <string>--repeat-penalty</string>
+        <string>1.05</string>
+
+        <string>--ubatch-size</string>
+        <string>512</string>
+        <string>--batch-size</string>
+        <string>1024</string>
+        <string>--ctx-size</string>
+        <string>0</string>
+        <string>--cache-reuse</string>
+        <string>256</string>
+    </array>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/tmp/vim-fim.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/vim-fim.err.log</string>
+</dict>
+</plist>
