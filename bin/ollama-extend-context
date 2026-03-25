@@ -29,5 +29,8 @@ fi
 
 echo "Saving model as $NEW_MODEL_NAME with context length 131072..."
 
-OLLAMA_COMMANDS="/set parameter num_ctx 131072\n/save $NEW_MODEL_NAME"
-exec ollama run "$MODEL_NAME" "$OLLAMA_COMMANDS"
+exec ollama create "$NEW_MODEL_NAME" -f <(cat << EOF
+FROM $MODEL_NAME
+PARAMETER num_ctx 131072
+EOF
+)
