@@ -1,0 +1,15 @@
+#compdef ollama-extend-context
+
+local -a models
+models=(
+  $(
+    ollama list |
+    tail -n +2 |
+    grep -vE '\S+:\S+k' |
+    sed -E "s/ +/ /g" |
+    cut -f1,3,4 -d" " |
+    sed -e 's/:/\\:/' -e "s/ /:/" |
+    sed -E 's/ ([A-Z]+)$/\1/'
+  )
+)
+_describe 'local models' models
