@@ -34,11 +34,8 @@ zinit wait lucid atload'alias _ >/dev/null && unalias _' atpull"%atclone" atclon
 zinit_prezto_module git
 zinit_prezto_module homebrew
 
-# Original aliaes use `mutagen compose`, which is not available for me, I have `mutagen-compose` only. Use manually
-# updated aliases instead.
-# zinit ice wait atload"$MUTAGEN_ALIASES" lucid
-# zinit light akarzim/zsh-docker-aliases
-source ~/.files/zsh/docker-aliases.zsh
+zinit ice wait lucid
+zinit light akarzim/zsh-docker-aliases
 
 zinit ice wait as"completion" lucid
 zinit light ocodo/ollama_zsh_completion
