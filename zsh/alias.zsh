@@ -8,11 +8,11 @@ alias cs='brew services start colima'
 alias cx='brew services stop colima'
 
 ## Start-stop
-alias down='dkcd; ds clean'
-alias restart='stop && start'
-alias start='ds start &; dkcU &; wait; jobs'
-alias stop='ds stop &; dkcx &; wait'
-alias up='ds start; dkcU'
+alias down='mg project terminate'
+alias pause='mg project pause'
+alias restart='pause && resume'
+alias resume='mg project resume'
+alias up='mg project start'
 
 ## Docker Compose
 alias de='dkce $(dkc-executable-container)'
@@ -21,15 +21,6 @@ alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
 alias dkc-executable-container='test -f bin/rails && echo spring || echo ruby'
 alias dkcpsa='dkcps -a'
 alias mgcpsa='mgcps -a'
-
-## docker-sync
-alias ds='docker-sync'
-alias dsd='ds clean'
-alias dsl='ds logs'
-alias dsr='ds restart'
-alias dss='ds start'
-alias dsw="watch 'docker-sync logs | tail -n40'"
-alias dsx='ds stop'
 
 # Ruby and Rails in Docker
 alias be='bundle exec'
