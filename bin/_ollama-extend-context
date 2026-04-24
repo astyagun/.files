@@ -6,8 +6,7 @@ models=(
     ollama list |
     tail -n +2 |
     grep -vE '\S+:\S+k' |
-    sed -E "s/ +/ /g" |
-    cut -f1,3,4 -d" " |
+    ruby -ane 'puts $F.values_at(0, 2, 3).join(" ")' |
     sed -e 's/:/\\:/' -e "s/ /:/" |
     sed -E 's/ ([A-Z]+)$/\1/'
   )
