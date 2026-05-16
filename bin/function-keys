@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# Disable media keys in the top keyboard row of a MacBook makeking F1, F2, etc. keys available for direct use in games
+
+if [[ $1 == off ]]; then
+  NEW_VALUE=false
+else
+  NEW_VALUE=true
+fi
+
+defaults write -g com.apple.keyboard.fnState -boolean "$NEW_VALUE"
+/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
