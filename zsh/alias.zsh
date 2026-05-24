@@ -18,7 +18,7 @@ alias up='mg project start'
 alias de='dkce $(dkc-executable-container)'
 alias ded='dkce --env RAILS_ENV=development $(dkc-executable-container)'
 alias det='dkce --env RAILS_ENV=test $(dkc-executable-container)'
-alias dkc-executable-container='test -f bin/rails && echo spring || echo ruby'
+alias dkc-executable-container='test -f bin/rails && echo rails || echo ruby'
 alias dkcpsa='dkcps -a'
 alias mgcpsa='mgcps -a'
 
