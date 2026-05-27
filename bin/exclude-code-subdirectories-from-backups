@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+for d in ~/Code/*/{.docker-sync,.git,log,node_modules,tags,tmp}; do
+  if [ -d "$d" ]; then
+    tmutil addexclusion "$d"
+  fi
+done
+
