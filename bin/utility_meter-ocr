@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+
+# TODO: Normalize images by crop and rotation
+
+require "json"
+
+FLAT_COUNT = 72
+MAX_ATTEMPTS = 5
+OLLAMA_MODEL = "qwen3.5"
+OLLAMA_PROMPT = <<~PROMPT
+  ./%s
+  Respond in JSON with these fields:
+  black_numbers: Black numbers in utility meter readings, an array of five numbers
+PROMPT
+
+(1..FLAT_COUNT).each do |flat_number|
+  image_name = flat_number.to_s + ".jpg"
+  unless File.exist?(image_name)
+    puts flat_number.to_s + ","
+    next
+  end
+  attempts = 0
+  result = ""
+
+  MAX_ATTEMPTS.times do
+    ollama_response = `ollama run #{OLLAMA_MODEL} --think=false "#{OLLAMA_PROMPT % image_name}" 2>/dev/null`.lines
+
+    ollama_response.shift if ollama_response.first.start_with?('\`')
+    ollama_response.pop if ollama_response.last.start_with?('\`')
+    parsed_response = JSON.parse(ollama_response.join) rescue next
+
+    numbers = parsed_response["black_numbers"]
+    if numbers && numbers.is_a?(Array) && numbers.length == 5 && numbers.all? { it.is_a?(Integer) && it.to_s.length == 1 }
+      result = numbers.join.to_i
+      break
+    end
+  end
+
+  puts [flat_number, result].join(",")
+end
