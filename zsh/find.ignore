@@ -18,6 +18,7 @@ GTAGS
 _site/
 app/assets/javascripts/i18n/
 build-uno/
+config/pi-agent/sessions/
 coverage/
 elm-stuff/
 engines/*/vendor/bundle
