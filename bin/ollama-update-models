@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Retrieves the list of LLMs installed in the Docker container
+# Model names ending with "k" are virtual models added by ./ollama-extend-context script, so ignore them
+LLM_LIST=$(ollama list | tail -n +2 | grep -vE '\S+:\S+k' | awk '{print $1}')
+
+# Loop over each LLM to update it
+for llm in $LLM_LIST; do
+  echo "Updating $llm..."
+  ollama pull "$llm"
+done
