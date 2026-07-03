@@ -84,6 +84,18 @@ function cucumber-changed {
   fi
 }
 
+# LLMs
+function pi {
+  docker run --rm -it \
+    -e PI_SKIP_VERSION_CHECK=true \
+    -e PI_OFFLINE=true \
+    -e PI_TELEMETRY=false \
+    -v "$PWD:/workspace" \
+    -v "$HOME/.files/config/pi-agent:/root/.pi/agent" \
+    --add-host=host.docker.internal:host-gateway \
+    pi-agent "$@"
+}
+
 # Git
 alias cdg='cd $(git-root)'
 alias gbP='git branch-purge'
