@@ -26,3 +26,4 @@ bindkey -M emacs "^[ " glob-alias
 zmodload zsh/complist
 bindkey -M menuselect "\C-N" menu-complete
 bindkey -M menuselect "\C-P" reverse-menu-complete
+bindkey -M menuselect '^[[Z' reverse-menu-complete
