@@ -18,12 +18,6 @@ ICON_LOADING="..."
 ICON_RUNNING="L"
 ICON_STOPPED="l"
 
-if [[ -f /opt/homebrew/bin/brew ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-else
-  eval "$(/usr/local/bin/brew shellenv)"
-fi
-
 case $1 in
   start)
     /bin/launchctl load ~/Library/LaunchAgents/org.astyagun.vim-fim.plist
