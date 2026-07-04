@@ -91,7 +91,7 @@ function pi {
     -e PI_OFFLINE=true \
     -e PI_TELEMETRY=false \
     -v "$PWD:/workspace" \
-    -v "$HOME/.files/config/pi-agent:/root/.pi/agent" \
+    -v "$HOME/.pi/agent:/root/.pi/agent" \
     --add-host=host.docker.internal:host-gateway \
     pi-agent "$@"
 }
