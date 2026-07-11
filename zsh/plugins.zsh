@@ -50,10 +50,11 @@ zinit light djui/alias-tips
 # Navigation {{{
 
 alias cdc='code cd'
+alias cdh='home cd'
 alias mydiraction_dispatch=_diraction-dispatch
 zinit ice wait \
   cp'__diraction-dispatch -> _mydiraction-dispatch' \
-  atload'diraction create code ~/Code' \
+  atload'diraction create home ~/ && diraction create code ~/Code' \
   lucid
 zinit light AdrieanKhisbe/diractions
 
