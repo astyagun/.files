@@ -92,6 +92,7 @@ function pi {
     -e PI_TELEMETRY=false \
     -v "$PWD:/workspace" \
     -v "$HOME/.pi/agent:/root/.pi/agent" \
+    -v /workspace/.git \
     --add-host=host.docker.internal:host-gateway \
     pi-agent "$@"
 }
