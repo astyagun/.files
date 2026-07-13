@@ -41,6 +41,7 @@ docker run --rm --interactive \
   -e PI_TELEMETRY=false \
   -v "$PWD:/workspace" \
   -v "$HOME/.pi/agent:/home/pi/.pi/agent" \
+  -v "$HOME/.gitignore:/home/pi/.gitignore_global:ro" \
   "$git_volume[@]" \
   "$git_ignores_volumes[@]" \
   --add-host=host.docker.internal:host-gateway \
