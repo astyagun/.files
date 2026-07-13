@@ -86,7 +86,12 @@ function cucumber-changed {
 
 # LLMs
 function pi {
-  docker run --rm -it \
+  local t
+  if [ -t 0 ]; then
+    # If STDIN is absent
+    t=t
+  fi
+  docker run --rm -i${t} \
     -e PI_SKIP_VERSION_CHECK=true \
     -e PI_OFFLINE=true \
     -e PI_TELEMETRY=false \
