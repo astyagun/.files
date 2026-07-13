@@ -84,24 +84,6 @@ function cucumber-changed {
   fi
 }
 
-# LLMs
-function pi {
-  local t
-  if [ -t 0 ]; then
-    # If STDIN is absent
-    t=t
-  fi
-  docker run --rm -i${t} \
-    -e PI_SKIP_VERSION_CHECK=true \
-    -e PI_OFFLINE=true \
-    -e PI_TELEMETRY=false \
-    -v "$PWD:/workspace" \
-    -v "$HOME/.pi/agent:/root/.pi/agent" \
-    -v /workspace/.git \
-    --add-host=host.docker.internal:host-gateway \
-    pi-agent "$@"
-}
-
 # Git
 alias cdg='cd $(git-root)'
 alias gbP='git branch-purge'
