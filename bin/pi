@@ -7,17 +7,18 @@
 
 # Pi containerization docs: https://pi.dev/docs/latest/containerization
 
-local tty
+tty=""
 if [ -t 0 ]; then
-  # Can't pass --tty is STDIN is present
+  # Can't pass --tty if STDIN is present
   tty="--tty"
 fi
 
-local git_volume
-local git_ignores_vulumes
+git_volume=()
+git_ignores_vulumes=()
 if [ -d '.git' ]; then
   # Read only, so that LLM can't `git push -f` or rebase accidentally
   git_volume=("-v" "$PWD/.git:/workspace/.git:ro")
+  git_ignores_volumes=("-v" "$HOME/.gitignore:/home/pi/.gitignore_global:ro")
 
   # Mount empty anonymous volumes for each git ignore, so that LLM can't modify or delete these untracked files or
   # directories
@@ -41,8 +42,7 @@ docker run --rm --interactive \
   -e PI_TELEMETRY=false \
   -v "$PWD:/workspace" \
   -v "$HOME/.pi/agent:/home/pi/.pi/agent" \
-  -v "$HOME/.gitignore:/home/pi/.gitignore_global:ro" \
-  "$git_volume[@]" \
-  "$git_ignores_volumes[@]" \
+  "${git_volume[@]}" \
+  "${git_ignores_volumes[@]}" \
   --add-host=host.docker.internal:host-gateway \
   pi-agent "$@"
