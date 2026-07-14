@@ -14,7 +14,7 @@ if [ -t 0 ]; then
 fi
 
 git_volume=()
-git_ignores_vulumes=()
+git_ignores_volumes=()
 if [ -d '.git' ]; then
   # Read only, so that LLM can't `git push -f` or rebase accidentally
   git_volume=("-v" "$PWD/.git:/workspace/.git:ro")
