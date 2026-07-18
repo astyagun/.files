@@ -1,8 +1,13 @@
 {
-  "tui.editor.cursorUp": ["up", "ctrl+p"],
-  "tui.editor.cursorDown": ["down", "ctrl+n"],
-  "app.model.cycleForward": "none",
   "app.model.cycleBackward": "none",
-  "tui.select.up": ["up", "ctrl+p"],
-  "tui.select.down": ["down", "ctrl+n"]
+  "app.model.cycleForward": "none",
+  "app.session.delete": "ctrl+x",
+  "app.session.rename": "ctrl+s",
+  "app.session.toggleNamedFilter": "ctrl-g",
+  "app.session.togglePath": "none",
+  "app.session.toggleSort": "none",
+  "tui.editor.cursorDown": ["down", "ctrl+n"],
+  "tui.editor.cursorUp": ["up", "ctrl+p"],
+  "tui.select.down": ["down", "ctrl+n"],
+  "tui.select.up": ["up", "ctrl+p"]
 }
