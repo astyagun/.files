@@ -51,4 +51,4 @@ docker run --rm --interactive \
   "${git_volume[@]}" \
   "${git_ignores_volumes[@]}" \
   --add-host=host.docker.internal:host-gateway \
-  pi-agent "$@"
+  pi_agent "$@"
