@@ -24,7 +24,7 @@ if ! pgrep -q "Ollama" &>/dev/null; then
 fi
 
 OLLAMA_PS=$(ollama ps 2>/dev/null | tail -n +2 | grep -v '^$')
-LOADED_MODELS=$(echo $OLLAMA_PS | ruby -ane 'puts $F[0]')
+LOADED_MODELS=$(echo "$OLLAMA_PS" | ruby -ane 'puts $F[0]')
 
 if [[ "$1" = "unload_all" ]]; then
   echo "$LOADED_MODELS" | while IFS= read -r m; do ollama stop "$m"; done
@@ -39,7 +39,7 @@ fi
 if [[ -n "$LOADED_MODELS" ]]; then
   if echo "$OLLAMA_PS" | ruby -ane 'puts $F[-1]' | grep -q "Stopping..."; then
     echo "O..."
-    (sleep 1 && open "swiftbar://refreshplugin?name=ollama-models") &>/dev/null </dev/null & disown || true
+    (sleep 1 && open -g "swiftbar://refreshplugin?name=ollama-models") &>/dev/null </dev/null & disown || true
   else
     echo "O"
   fi
