@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+# ansible-lint writes mocked modules into ~/.ansible directory, which are then picked up by Ansible, but since they are
+# mocks, it breaks things
+
+ANSIBLE_HOME="$HOME/.cache/ansible-lint" $HOMEBREW_PREFIX/bin/ansible-lint "$@"
