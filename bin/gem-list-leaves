@@ -1,11 +1,15 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
 # List Ruby gems, that are not a dependency of any other gem (analog of `brew leaves`)
-# https://gist.github.com/astyagun/290b783045afffb8190a0c75ab76d0fa
+#
+# ALso excludes gems from stdlib. But assumes that the OS is macOS with Homebrew installed Ruby for this.
 
-GEMS_FILE=`mktemp`
-DEPENDENCIES_FILE=`mktemp`
+GEMS=$(gem list -l | sed 's/ (.*//' | sort)
+DEPS=$(echo "$GEMS" | xargs -n1 gem dependency -l --pipe | sed 's/ --version.*//' | sort -u)
+LEAVES=$(comm -23 <(echo "$GEMS") <(echo "$DEPS"))
 
-gem list -l | sed 's/ (.*//' | sort > $GEMS_FILE
-cat $GEMS_FILE | xargs -n1 gem dependency -l --pipe | sed 's/ --version.*//' | sort -u > $DEPENDENCIES_FILE
-comm -23 $GEMS_FILE $DEPENDENCIES_FILE
-rm -f $GEMS_FILE $DEPENDENCIES_FILE
+while read -r gem; do
+  if ! gem info "$gem" | grep -q Cellar; then
+    echo "$gem"
+  fi
+done <<< "$LEAVES"
