@@ -7,7 +7,10 @@ AllCops:
   DisplayCopNames: true
   DisplayStyleGuide: true
   ExtraDetails: true
+  TargetRubyVersion: 4.0
 
+Layout/EndAlignment:
+  EnforcedStyleAlignWith: start_of_line
 Layout/FirstArrayElementIndentation:
   EnforcedStyle: consistent
 Layout/HashAlignment:
@@ -38,9 +41,11 @@ Naming/MethodParameterName:
 Style/Documentation: {Enabled: false}
 Style/FrozenStringLiteralComment: {Enabled: false}
 Style/MethodCallWithArgsParentheses:
-  Enabled: true
-  EnforcedStyle: omit_parentheses
+  # Haven't found a way to configure this rule: if method is called for its return value - use parens, else - don't
+  Enabled: false
 Style/StringLiterals:
+  EnforcedStyle: double_quotes
+Style/StringLiteralsInInterpolation:
   EnforcedStyle: double_quotes
 
 RSpec/ContextWording:
@@ -74,30 +79,36 @@ RSpec/NestedGroups:
 
 # Pending cops
 
-Gemspec/AddRuntimeDependency: { Enabled: true }
-Gemspec/AttributeAssignment: { Enabled: true }
-Gemspec/DeprecatedAttributeAssignment: { Enabled: true }
-Gemspec/DevelopmentDependencies: { Enabled: true }
-Gemspec/RequireMFA: { Enabled: true }
-Layout/EmptyLinesAfterModuleInclusion: { Enabled: true }
+Gemspec/AddRuntimeDependency: {Enabled: true}
+Gemspec/AttributeAssignment: {Enabled: true}
+Gemspec/DeprecatedAttributeAssignment: {Enabled: true}
+Gemspec/DevelopmentDependencies: {Enabled: true}
+Gemspec/RequireMFA: {Enabled: true}
+Layout/EmptyLinesAfterModuleInclusion: {Enabled: true}
 Layout/EmptyLinesAroundAttributeAccessor: {Enabled: true}
-Layout/LineContinuationLeadingSpace: { Enabled: true }
-Layout/LineContinuationSpacing: { Enabled: true }
-Layout/LineEndStringConcatenationIndentation: { Enabled: true }
+Layout/LineContinuationLeadingSpace: {Enabled: true}
+Layout/LineContinuationSpacing: {Enabled: true}
+Layout/LineEndStringConcatenationIndentation: {Enabled: true}
 Layout/SpaceAroundMethodCallOperator: {Enabled: true}
 Layout/SpaceBeforeBrackets: {Enabled: true}
 Lint/AmbiguousAssignment: {Enabled: true}
-Lint/AmbiguousOperatorPrecedence: { Enabled: true }
-Lint/AmbiguousRange: { Enabled: true }
-Lint/ArrayLiteralInRegexp: { Enabled: true }
-Lint/ConstantOverwrittenInRescue: { Enabled: true }
+Lint/AmbiguousOperatorPrecedence: {Enabled: true}
+Lint/AmbiguousRange: {Enabled: true}
+Lint/ArrayLiteralInRegexp: {Enabled: true}
+Lint/ConstantOverwrittenInRescue: {Enabled: true}
+Lint/ConstantReassignment: {Enabled: true}
+Lint/CopDirectiveSyntax: {Enabled: true}
 Lint/DeprecatedConstants: {Enabled: true}
 Lint/DeprecatedOpenSSLConstant: {Enabled: true}
 Lint/DuplicateBranch: {Enabled: true}
 Lint/DuplicateElsifCondition: {Enabled: true}
+Lint/DuplicateMagicComment: {Enabled: true}
+Lint/DuplicateMatchPattern: {Enabled: true}
 Lint/DuplicateRegexpCharacterClassElement: {Enabled: true}
+Lint/DuplicateSetElement: {Enabled: true}
 Lint/EmptyBlock: {Enabled: true}
 Lint/EmptyClass: {Enabled: true}
+Lint/EmptyInPattern: {Enabled: true}
 Lint/LambdaWithoutLiteralBlock: {Enabled: true}
 Lint/MixedRegexpCaptureTypes: {Enabled: true}
 Lint/NoReturnInBeginEndBlocks: {Enabled: true}
@@ -146,20 +157,7 @@ Style/RedundantRegexpEscape: {Enabled: true}
 Style/SlicingWithRange: {Enabled: true}
 Style/SwapValues: {Enabled: true}
 
-
 # TODO: Continue reviewing
-# Lint/ConstantReassignment: # new in 1.70
-#   Enabled: true
-# Lint/CopDirectiveSyntax: # new in 1.72
-#   Enabled: true
-# Lint/DuplicateMagicComment: # new in 1.37
-#   Enabled: true
-# Lint/DuplicateMatchPattern: # new in 1.50
-#   Enabled: true
-# Lint/DuplicateSetElement: # new in 1.67
-#   Enabled: true
-# Lint/EmptyInPattern: # new in 1.16
-#   Enabled: true
 # Lint/HashNewWithKeywordArgumentsAsDefault: # new in 1.69
 #   Enabled: true
 # Lint/IncompatibleIoSelectWithFiberScheduler: # new in 1.21
