@@ -4,9 +4,17 @@
 
 module.paths.unshift("/opt/homebrew/lib/node_modules"); // Use globally installed puppeteer
 
-const path = require('path');
-const process = require('process');
-const puppeteer = require('puppeteer');
+const path = require("path");
+const process = require("process");
+const puppeteer = require("puppeteer");
+
+const SCREENSHOT_PATH = path.join(process.env.HOME, "/Downloads/screenshot.jpg");
+const TIMEOUT = 10000;
+
+async function saveScreenshot(page) {
+  await page.screenshot({path: SCREENSHOT_PATH, fullPage: true});
+  console.log("Screenshot saved to ", SCREENSHOT_PATH);
+}
 
 (async () => {
   if (process.argv.length < 3) {
@@ -18,11 +26,20 @@ const puppeteer = require('puppeteer');
 
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
-  await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15');
-  await page.setDefaultTimeout(60000);
+  await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15");
+  await page.setDefaultTimeout(TIMEOUT);
 
-  await page.goto(url, {waitUntil: 'networkidle2'});
-  await page.waitForNavigation();
+  try {
+    await page.goto(url, {waitUntil: ["domcontentloaded", "networkidle2"]});
+    await page.waitForNavigation();
+  } catch (error) {
+    // Ignore timeout
+    if (error.name !== 'TimeoutError') {
+      console.error(error);
+    // } else {
+    //   await saveScreenshot(page);
+    }
+  }
   const html = await page.content();
 
   console.log(html);
