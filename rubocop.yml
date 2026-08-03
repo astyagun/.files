@@ -1,15 +1,12 @@
 ---
 plugins:
-  - rubocop-capybara
   - rubocop-performance
-  - rubocop-rails
   - rubocop-rspec
 
 AllCops:
   DisplayCopNames: true
   DisplayStyleGuide: true
   ExtraDetails: true
-  TargetRubyVersion: 2.7
 
 Layout/FirstArrayElementIndentation:
   EnforcedStyle: consistent
@@ -25,11 +22,11 @@ Layout/SpaceInsideHashLiteralBraces:
 
 Lint/AmbiguousBlockAssociation:
   Exclude:
-    - '**/*_spec.rb'
+    - "**/*_spec.rb"
 
 Metrics/BlockLength:
   Exclude:
-    - '**/*_spec.rb'
+    - "**/*_spec.rb"
     - config/environments/*.rb
     - spec/swagger_helper.rb
 
@@ -45,13 +42,6 @@ Style/MethodCallWithArgsParentheses:
   EnforcedStyle: omit_parentheses
 Style/StringLiterals:
   EnforcedStyle: double_quotes
-
-Rails/WhereExists:
-  Enabled: true
-  EnforcedStyle: where
-Rails/ShortI18n:
-  Enabled: true
-  EnforcedStyle: aggressive
 
 RSpec/ContextWording:
   Prefixes:
@@ -130,22 +120,6 @@ Performance/SortReverse: {Enabled: true}
 Performance/Squeeze: {Enabled: true}
 Performance/StringInclude: {Enabled: true}
 Performance/Sum: {Enabled: true}
-Rails/ActiveRecordCallbacksOrder: {Enabled: true}
-Rails/AfterCommitOverride: {Enabled: true}
-Rails/AttributeDefaultBlockValue: {Enabled: true}
-Rails/FindById: {Enabled: true}
-Rails/Inquiry: {Enabled: true}
-Rails/MailerName: {Enabled: true}
-Rails/MatchRoute: {Enabled: true}
-Rails/NegateInclude: {Enabled: true}
-Rails/Pluck: {Enabled: true}
-Rails/PluckId: {Enabled: true}
-Rails/PluckInWhere: {Enabled: true}
-Rails/RenderInline: {Enabled: true}
-Rails/RenderPlainText: {Enabled: true}
-Rails/SquishedSQLHeredocs: {Enabled: true}
-Rails/WhereEquals: {Enabled: true}
-Rails/WhereNot: {Enabled: true}
 Style/AccessorGrouping: {Enabled: false}
 Style/ArgumentsForwarding: {Enabled: true}
 Style/ArrayCoercion: {Enabled: false}
@@ -388,26 +362,6 @@ Style/SwapValues: {Enabled: true}
 #   Enabled: true
 # Style/YAMLFileRead: # new in 1.53
 #   Enabled: true
-# Capybara/FindAllFirst: # new in 2.22
-#   Enabled: true
-# Capybara/MatchStyle: # new in 2.17
-#   Enabled: true
-# Capybara/NegationMatcher: # new in 2.14
-#   Enabled: true
-# Capybara/NegationMatcherAfterVisit: # new in 2.22
-#   Enabled: true
-# Capybara/RedundantWithinFind: # new in 2.20
-#   Enabled: true
-# Capybara/SpecificActions: # new in 2.14
-#   Enabled: true
-# Capybara/SpecificFinders: # new in 2.13
-#   Enabled: true
-# Capybara/SpecificMatcher: # new in 2.12
-#   Enabled: true
-# Capybara/RSpec/HaveSelector: # new in 2.19
-#   Enabled: true
-# Capybara/RSpec/PredicateMatcher: # new in 2.19
-#   Enabled: true
 # Performance/ConcurrentMonotonicTime: # new in 1.12
 #   Enabled: true
 # Performance/MapCompact: # new in 1.11
@@ -423,98 +377,6 @@ Style/SwapValues: {Enabled: true}
 # Performance/StringIdentifierArgument: # new in 1.13
 #   Enabled: true
 # Performance/ZipWithoutBlock: # new in 1.24
-#   Enabled: true
-# Rails/ActionControllerFlashBeforeRender: # new in 2.16
-#   Enabled: true
-# Rails/ActionControllerTestCase: # new in 2.14
-#   Enabled: true
-# Rails/ActionOrder: # new in 2.17
-#   Enabled: true
-# Rails/ActiveSupportOnLoad: # new in 2.16
-#   Enabled: true
-# Rails/AddColumnIndex: # new in 2.11
-#   Enabled: true
-# Rails/CompactBlank: # new in 2.13
-#   Enabled: true
-# Rails/DangerousColumnNames: # new in 2.21
-#   Enabled: true
-# Rails/DeprecatedActiveModelErrorsMethods: # new in 2.14
-#   Enabled: true
-# Rails/DotSeparatedKeys: # new in 2.15
-#   Enabled: true
-# Rails/DuplicateAssociation: # new in 2.14
-#   Enabled: true
-# Rails/DuplicateScope: # new in 2.14
-#   Enabled: true
-# Rails/DurationArithmetic: # new in 2.13
-#   Enabled: true
-# Rails/EagerEvaluationLogMessage: # new in 2.11
-#   Enabled: true
-# Rails/EnumSyntax: # new in 2.26
-#   Enabled: true
-# Rails/EnvLocal: # new in 2.22
-#   Enabled: true
-# Rails/ExpandedDateRange: # new in 2.11
-#   Enabled: true
-# Rails/FindByOrAssignmentMemoization: # new in 2.33
-#   Enabled: true
-# Rails/FreezeTime: # new in 2.16
-#   Enabled: true
-# Rails/HttpStatusNameConsistency: # new in 2.34
-#   Enabled: true
-# Rails/I18nLazyLookup: # new in 2.14
-#   Enabled: true
-# Rails/I18nLocaleAssignment: # new in 2.11
-#   Enabled: true
-# Rails/I18nLocaleTexts: # new in 2.14
-#   Enabled: true
-# Rails/IgnoredColumnsAssignment: # new in 2.17
-#   Enabled: true
-# Rails/MigrationClassName: # new in 2.14
-#   Enabled: true
-# Rails/MultipleRoutePaths: # new in 2.29
-#   Enabled: true
-# Rails/OrderArguments: # new in 2.33
-#   Enabled: true
-# Rails/RedirectBackOrTo: # new in 2.34
-#   Enabled: true
-# Rails/RedundantActiveRecordAllMethod: # new in 2.21
-#   Enabled: true
-# Rails/RedundantPresenceValidationOnBelongsTo: # new in 2.13
-#   Enabled: true
-# Rails/RedundantTravelBack: # new in 2.12
-#   Enabled: true
-# Rails/ResponseParsedBody: # new in 2.18
-#   Enabled: true
-# Rails/RootJoinChain: # new in 2.13
-#   Enabled: true
-# Rails/RootPathnameMethods: # new in 2.16
-#   Enabled: true
-# Rails/RootPublicPath: # new in 2.15
-#   Enabled: true
-# Rails/StripHeredoc: # new in 2.15
-#   Enabled: true
-# Rails/StrongParametersExpect: # new in 2.29
-#   Enabled: true
-# Rails/ThreeStateBooleanColumn: # new in 2.19
-#   Enabled: true
-# Rails/TimeZoneAssignment: # new in 2.10
-#   Enabled: true
-# Rails/ToFormattedS: # new in 2.15
-#   Enabled: true
-# Rails/ToSWithArgument: # new in 2.16
-#   Enabled: true
-# Rails/TopLevelHashWithIndifferentAccess: # new in 2.16
-#   Enabled: true
-# Rails/TransactionExitStatement: # new in 2.14
-#   Enabled: true
-# Rails/UnusedRenderContent: # new in 2.21
-#   Enabled: true
-# Rails/WhereMissing: # new in 2.16
-#   Enabled: true
-# Rails/WhereNotWithMultipleConditions: # new in 2.17
-#   Enabled: true
-# Rails/WhereRange: # new in 2.25
 #   Enabled: true
 # RSpec/IncludeExamples: # new in 3.6
 #   Enabled: true
