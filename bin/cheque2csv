@@ -1,0 +1,171 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Конвертер:
+# - произвольного текста чека в JSON с заданной структурой используя БЯМ через Ollama
+# - из JSON в CSV файл для импорта в Money Pro
+
+require "bigdecimal"
+require "csv"
+require "json"
+require "open3"
+require "readline"
+require "yaml"
+
+MODEL_NAME = "qwen3.6:35b-a3b-mxfp8"
+PROMPT = <<~PROMPT
+  Сгенерируй JSON файл основываясь на данных из чека.
+  Структура JSON файла:
+  {
+    "total": number,
+    "timedate": string,
+    "items": [
+      {
+        "category": string,
+        "name": string,
+        "sum": float
+      }
+    ]
+  }
+  Сохраняй имена товаров дословно.
+  %<available_categories>s
+  Выведи только голый неформатированный JSON в одну строчку, ничего больше.
+  Чек:
+  %<cheque_content>s
+PROMPT
+
+DB_PATH = File.expand_path("~/.config/cheque2csv/categories.yml")
+DB_DIRECTORY = File.dirname(DB_PATH)
+FileUtils.mkdir_p(DB_DIRECTORY) unless File.directory?(DB_DIRECTORY)
+
+PATH = ARGV[0]
+abort "Передкйте путь файл с текстом чека в качестве первого аргумента" if PATH.nil? || PATH.empty?
+
+CHEQUE_FILE_PATH = File.expand_path(PATH)
+abort "Файл чека не найден" unless File.exist?(CHEQUE_FILE_PATH)
+abort "Файл чека пуст" if File.zero?(CHEQUE_FILE_PATH)
+
+OUTPUT_DIRECTORY = File.dirname(CHEQUE_FILE_PATH)
+OUTPUT_FILE_PATH = File.join(OUTPUT_DIRECTORY, "#{File.basename(CHEQUE_FILE_PATH, ".txt")}.csv")
+abort "Файл CSV уже существует" if File.exist?(OUTPUT_FILE_PATH)
+
+data = if File.exist?(DB_PATH)
+  YAML.load_file(DB_PATH)
+else
+  {
+    categories:  [],
+    known_items: {}
+  }
+end
+
+available_categories = if data[:categories].any?
+  "Существующие категории:\n#{data[:categories].map { "- #{it}" }.join("\n")}"
+else
+  ""
+end
+
+prompt = format(PROMPT, available_categories:, cheque_content: File.read(CHEQUE_FILE_PATH))
+
+puts "Бямлю..."
+
+json, stderr_str, status =
+  Open3.capture3("ollama run --hidethinking --think=false --nowordwrap --format json #{MODEL_NAME}", stdin_data: prompt)
+abort stderr_str unless status.success?
+
+cheque = JSON.parse(json, symbolize_names: true)
+
+abort "Лишние ключи в JSON" unless cheque.keys.sort == %i[total timedate items].sort
+abort "Поле 'total' отсутствует в JSON" unless cheque.key?(:total)
+abort "Поле 'timedate' отсутствует в JSON" unless cheque.key?(:timedate)
+abort "Поле 'items' отсутствует в JSON" unless cheque.key?(:items)
+abort "Поле 'total' должно быть числом" unless cheque[:total].is_a?(Numeric) && cheque[:total] >= 0
+abort "Поле 'timedate' должно быть строкой" unless cheque[:timedate].is_a?(String)
+abort "Поле 'items' должно быть массивом" unless cheque[:items].is_a?(Array)
+abort "Товары отсутствуют в чеке" if cheque[:items].empty?
+begin
+  cheque[:timedate] = Time.parse(cheque[:timedate])
+rescue ArgumentError
+  abort "Невозможно распознать время и дату в поле 'timedate'"
+end
+cheque[:total] = BigDecimal(cheque[:total])
+
+cheque[:items].each do |item|
+  abort "У товара отсутствует категория" unless item.key?(:category)
+  abort "У товара отсутствует название" unless item.key?(:name)
+  abort "У товара отсутствует сумма" unless item.key?(:sum)
+  abort "Категория должна быть строкой" unless item[:category].is_a?(String) && !item[:category].empty?
+  abort "Название должно быть строкой" unless item[:name].is_a?(String) && !item[:name].empty?
+  abort "Сумма должна быть числом" unless item[:sum].is_a?(Numeric) && item[:sum] >= 0
+  item[:name].sub!(/^ *\[[MМ]\+\] */, "")
+  item[:name].sub!(/,? *[\d.,xх]+(?:к?гр?|м?л|шт) *$/, "")
+  item[:name].strip!
+  item[:category].strip!
+  item[:sum] = BigDecimal(item[:sum])
+end
+abort "Сумма товаров не совпадает с общей суммой чека" if cheque[:items].sum { it[:sum] } != cheque[:total]
+
+puts "Сумма: #{cheque[:total].to_f}, Время: #{cheque[:timedate]}"
+
+# :reek:FeatureEnvy
+def puts_item(item)
+  puts "#{item[:sum].to_f} - #{item[:category]} - #{item[:name]}"
+end
+
+categories = {}
+cheque[:items].each do |item| # rubocop:disable Metrics/BlockLength
+  puts
+  if data[:known_items][item[:name]]
+    puts "Известный товар:"
+    puts_item item
+    categories[item[:category]] ||= BigDecimal("0.0")
+    categories[item[:category]] += item[:sum]
+  else
+    puts "Новый товар:"
+    puts_item item
+    puts "Известные категории:"
+    data[:categories].each_with_index { |category, index| puts "#{index + 1}. #{category}" }
+    input = Readline.readline(
+      "Выберите номер категории, введите имя новой или нажмите Enter, чтобы использовать текущую: "
+    ).strip
+    if input.empty?
+      # NOOP
+    elsif input.to_i.to_s == input
+      abort "Некорректный номер категории" if data[:categories][input.to_i - 1].nil?
+      item[:category] = data[:categories][input.to_i - 1]
+      puts "Категория изменена:"
+      puts_item item
+    else
+      item[:category] = input
+      puts "Категория изменена:"
+      puts_item item
+    end
+    categories[item[:category]] ||= BigDecimal("0.0")
+    categories[item[:category]] += item[:sum]
+    unless data[:categories].include?(item[:category])
+      data[:categories] << item[:category]
+      data[:categories].sort!
+    end
+    data[:known_items][item[:name]] = item[:category]
+  end
+end
+
+puts
+
+abort "Сумма товаров не совпадает с общей суммой по категириям" if categories.values.sum != cheque[:total]
+
+puts
+
+data[:categories].uniq!
+data[:categories].sort!
+File.write(DB_PATH, YAML.dump(data))
+puts "База данных сохранена"
+
+expenses = CSV.generate do |csv|
+  csv << %w[Категория Сумма Валюты Дата Время]
+  categories.sort_by { it[0] }.each do |category, sum|
+    csv << [category, -sum.to_f, "RUB", cheque[:timedate].strftime("%Y-%m-%d"), cheque[:timedate].strftime("%H:%M")]
+  end
+end
+
+File.write(OUTPUT_FILE_PATH, expenses)
+puts "Результат сохранён в #{OUTPUT_FILE_PATH}"
