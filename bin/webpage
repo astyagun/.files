@@ -6,7 +6,11 @@ module.paths.unshift("/opt/homebrew/lib/node_modules"); // Use globally installe
 
 const path = require("path");
 const process = require("process");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-extra");
+const blockResourcesPlugin = require("puppeteer-extra-plugin-block-resources")({
+  blockedTypes: new Set(["image", "stylesheet", "media", "other", "script"]),
+});
+puppeteer.use(blockResourcesPlugin);
 
 const SCREENSHOT_PATH = path.join(process.env.HOME, "/Downloads/screenshot.jpg");
 const TIMEOUT = 10000;
@@ -30,8 +34,7 @@ async function saveScreenshot(page) {
   await page.setDefaultTimeout(TIMEOUT);
 
   try {
-    await page.goto(url, {waitUntil: ["domcontentloaded", "networkidle2"]});
-    await page.waitForNavigation();
+    await page.goto(url, {waitUntil: "domcontentloaded"});
   } catch (error) {
     // Ignore timeout
     if (error.name !== 'TimeoutError') {
