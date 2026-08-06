@@ -45,6 +45,14 @@ CHEQUE_FILE_PATH = File.expand_path(PATH)
 abort "Файл чека не найден" unless File.exist?(CHEQUE_FILE_PATH)
 abort "Файл чека пуст" if File.zero?(CHEQUE_FILE_PATH)
 
+file_name_date = File.basename(CHEQUE_FILE_PATH, ".txt").match(/\d{2}\.\d{2}\.\d{4}/)[0]
+abort "Не найдено даты в имени файла чека" if file_name_date.nil?
+CHEQUE_FILE_NAME_DATE = begin
+  Date.parse(file_name_date)
+rescue Date::Error => e
+  abort "Не удалось распознать дату в имени файла чека: #{e.message}"
+end
+
 OUTPUT_DIRECTORY = File.dirname(CHEQUE_FILE_PATH)
 OUTPUT_FILE_PATH = File.join(OUTPUT_DIRECTORY, "#{File.basename(CHEQUE_FILE_PATH, ".txt")}.csv")
 abort "Файл CSV уже существует" if File.exist?(OUTPUT_FILE_PATH)
@@ -87,6 +95,10 @@ begin
 rescue ArgumentError
   abort "Невозможно распознать время и дату в поле 'timedate'"
 end
+if cheque[:timedate].to_date != CHEQUE_FILE_NAME_DATE
+  abort "Дата распознанная БЯМ не совпадает с датой в имени файла чека"
+end
+
 cheque[:total] = BigDecimal(cheque[:total])
 
 cheque[:items].each do |item|
