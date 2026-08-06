@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Concatenates all CSV files in the current directory into one file, keeping only one header line
+
+shopt -s nullglob # So that glob expansion doesn't produce a literal '*' if there are no matches
+
+if [[ $# -gt 0 ]]; then
+  echo "Usage: $0"
+  exit 1
+fi
+
+first=true
+for file in *.csv; do
+  if [[ "$first" == true ]]; then
+    header=$(head -n 1 "$file")
+    echo "$header" > merged.csv
+    first=false
+  fi
+  tail -n +2 "$file" >> merged.csv
+done
+
+if [ "$first" = true ]; then
+  echo "Нет CSV-файлов"
+  exit 1
+fi
