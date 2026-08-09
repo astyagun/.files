@@ -13,8 +13,8 @@ export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd $FZF_FD_COMMON_OPTIONS --type d ."
 
 FZF_BIND_OPTION=$(cat <<-EOF | sed -e ':a' -e '$!N; s/\n/,/; ta'
---bind ctrl-f:page-down
-ctrl-b:page-up
+--bind ctrl-v:page-down
+alt-v:page-up
 ctrl-j:next-history
 ctrl-k:previous-history
 ctrl-n:down
