@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# Convert screen recording videos to GIFs
+
+set -o errexit
+
+for file in "$@"; do
+  file_no_ext=${file%.*}
+  output_file="${file_no_ext}.gif"
+  tmp_file="$(mktemp).gif"
+
+  ffmpeg \
+    -i "$file" \
+    -loop 0 -filter_complex "fps=30[s]; [s]split[a][b]; [a]palettegen[palette]; [b][palette]paletteuse" \
+    "$tmp_file"
+  mv "$tmp_file" "$output_file"
+done
