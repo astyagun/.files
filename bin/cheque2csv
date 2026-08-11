@@ -13,6 +13,8 @@ require "readline"
 require "yaml"
 
 MODEL_NAME = "qwen3.6:35b-a3b-mxfp8"
+# MODEL_NAME = "qwen3.5:9b-nvfp4"
+# MODEL_NAME = "qwen3.6:27b-mxfp8"
 PROMPT = <<~PROMPT
   Сгенерируй JSON файл основываясь на данных из чека.
   Структура JSON файла:
@@ -93,10 +95,13 @@ abort "Товары отсутствуют в чеке" if cheque[:items].empty?
 begin
   cheque[:timedate] = Time.parse(cheque[:timedate])
 rescue ArgumentError
-  abort "Невозможно распознать время и дату в поле 'timedate'"
+  abort "Невозможно распознать время и дату в поле 'timedate': #{cheque[:timedate]}"
 end
 if cheque[:timedate].to_date != CHEQUE_FILE_NAME_DATE
-  abort "Дата распознанная БЯМ не совпадает с датой в имени файла чека"
+  abort <<~MSG
+    Дата распознанная БЯМ не совпадает с датой в имени файла чека:
+    (от БЯМ) #{cheque[:timedate]} != #{CHEQUE_FILE_NAME_DATE} (в имени чека)
+  MSG
 end
 
 cheque[:total] = BigDecimal(cheque[:total])
@@ -114,7 +119,21 @@ cheque[:items].each do |item|
   item[:category].strip!
   item[:sum] = BigDecimal(item[:sum])
 end
-abort "Сумма товаров не совпадает с общей суммой чека" if cheque[:items].sum { it[:sum] } != cheque[:total]
+
+# if cheque[:items].select { it[:name] == "Высокопротеиновый пудинг Hyper High Protein со вкусом шоколада 1.5%" }.length == 7
+#   # Delete one such item
+#   cheque[:items].delete(
+#     cheque[:items].first { it[:name] == "Высокопротеиновый пудинг Hyper High Protein со вкусом шоколада 1.5%" }
+#   )
+# end
+
+items_sum = cheque[:items].sum { it[:sum] }
+if items_sum != cheque[:total]
+  abort <<~MSG
+    Сумма товаров не совпадает с общей суммой чека:
+    (сумма товаров) #{items_sum.to_f} != #{cheque[:total].to_f} (общая сумма чека)
+  MSG
+end
 
 puts "Сумма: #{cheque[:total].to_f}, Время: #{cheque[:timedate]}"
 
