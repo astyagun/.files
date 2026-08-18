@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# Обработка сразу нескольких чеков
+
+for cheque in *.txt; do
+  echo "$cheque..."
+  if cheque2csv "$cheque"; then
+    echo Готово
+  else
+    echo Ошибка!
+    mkdir Err
+    mv "$cheque" Err/
+  fi
+done
+
+if [ "$(find . -maxdepth 1 -name '*.csv' -print | wc -l)" -gt 1 ]; then
+  echo "Объединение CSV-файлов..."
+  concatcsv
+fi
