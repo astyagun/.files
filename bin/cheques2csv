@@ -8,7 +8,7 @@ for cheque in *.txt; do
     echo Готово
   else
     echo Ошибка!
-    mkdir Err
+    mkdir -p Err
     mv "$cheque" Err/
   fi
 done
