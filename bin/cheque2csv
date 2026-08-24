@@ -113,19 +113,12 @@ cheque[:items].each do |item|
   abort "Категория должна быть строкой" unless item[:category].is_a?(String) && !item[:category].empty?
   abort "Название должно быть строкой" unless item[:name].is_a?(String) && !item[:name].empty?
   abort "Сумма должна быть числом" unless item[:sum].is_a?(Numeric) && item[:sum] >= 0
-  item[:name].sub!(/^ *\[[MМ]\+\] */, "")
+  item[:name].sub!(/^ *\[[MМ]\+?\] */, "")
   item[:name].sub!(/,? *[\d.,xх]+(?:к?гр?|м?л|шт) *$/, "")
   item[:name].strip!
   item[:category].strip!
   item[:sum] = BigDecimal(item[:sum])
 end
-
-# if cheque[:items].select { it[:name] == "Высокопротеиновый пудинг Hyper High Protein со вкусом шоколада 1.5%" }.length == 7
-#   # Delete one such item
-#   cheque[:items].delete(
-#     cheque[:items].first { it[:name] == "Высокопротеиновый пудинг Hyper High Protein со вкусом шоколада 1.5%" }
-#   )
-# end
 
 items_sum = cheque[:items].sum { it[:sum] }
 if items_sum != cheque[:total]
