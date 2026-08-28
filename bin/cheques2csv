@@ -3,6 +3,7 @@
 # Обработка сразу нескольких чеков
 
 for cheque in *.txt; do
+  echo --------------------------------------------------------------------------------
   echo "$cheque..."
   if cheque2csv "$cheque"; then
     echo Готово
@@ -11,6 +12,7 @@ for cheque in *.txt; do
     mkdir -p Err
     mv "$cheque" Err/
   fi
+  echo
 done
 
 if [ "$(find . -maxdepth 1 -name '*.csv' -print | wc -l)" -gt 1 ]; then

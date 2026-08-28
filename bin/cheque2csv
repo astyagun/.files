@@ -173,8 +173,6 @@ cheque[:items].each do |item| # rubocop:disable Metrics/BlockLength
   end
 end
 
-puts
-
 abort "Сумма товаров не совпадает с общей суммой по категириям" if categories.values.sum != cheque[:total]
 
 puts
