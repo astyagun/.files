@@ -37,6 +37,8 @@ Naming/MethodParameterName:
   AllowedNames:
     - x
     - y
+Naming/RescuedExceptionsVariableName:
+  PreferredName: error
 
 Style/Documentation: {Enabled: false}
 Style/FrozenStringLiteralComment: {Enabled: false}
