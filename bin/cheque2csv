@@ -14,7 +14,7 @@ require "yaml"
 
 MODEL_NAME = "qwen3.6:35b-a3b-mxfp8"
 # MODEL_NAME = "qwen3.5:9b-nvfp4"
-# MODEL_NAME = "qwen3.6:27b-mxfp8"
+# MODEL_NAME = "qwen3.8:27b-mxfp8"
 PROMPT = <<~PROMPT
   Сгенерируй JSON файл основываясь на данных из чека.
   Структура JSON файла:
