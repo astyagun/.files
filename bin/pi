@@ -28,7 +28,14 @@ if [ -d '.git' ]; then
 
   # Mount empty anonymous volumes for each git ignore, so that LLM can't modify or delete these untracked files or
   # directories
-  local git_ignores=$(git status --ignored --short | grep '^!! ' | grep -v '\.DS_Store$' | cut -d' ' -f2)
+  local git_ignores=$(
+    git status --ignored --short |\
+      grep '^!! ' |\
+      grep -v '\.DS_Store$' |\
+      cut -d' ' -f2 |\
+      grep -v "^undodir/" |\
+      grep -v '^"undodir/'
+    )
 
   while IFS= read -r git_ignore; do
     if [ -f "$git_ignore" ]; then
