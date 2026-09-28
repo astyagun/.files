@@ -27,6 +27,7 @@ PATH=$(cat <<-EOF | tr "\n" ':' | sed 's/:*$//g'
 $HOME/.files/bin
 $LATEST_RUBY_GEMS_BIN
 $(echo $HOME/Library/Python/*/bin | sed 's/ /:/g')
+$HOME/.local/bin
 $HOME/.venv/bin
 $HOMEBREW_PREFIX/opt/ruby/bin
 $HOMEBREW_PREFIX/opt/libpq/bin
