@@ -140,6 +140,7 @@ cheque[:items].each do |item| # rubocop:disable Metrics/BlockLength
   puts
   if data[:known_items][item[:name]]
     puts "Известный товар:"
+    item[:category] = data[:known_items][item[:name]]
     puts_item item
     categories[item[:category]] ||= BigDecimal("0.0")
     categories[item[:category]] += item[:sum]
