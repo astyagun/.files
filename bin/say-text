@@ -1,0 +1,102 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "tmpdir"
+require "fileutils"
+
+PROG = File.basename($PROGRAM_NAME)
+
+MODEL            = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
+VOICE            = "aiden"
+SPEED            = "1.75"
+
+CAP_MULTIPLIER   = 10
+CHARS_PER_TOKEN  = 3
+CHUNK_TOKENS     = 2048
+
+CHAR_BUDGET      = CHUNK_TOKENS * CHARS_PER_TOKEN
+MAX_TOKENS       = CHUNK_TOKENS * CAP_MULTIPLIER
+
+def read_input
+  ARGV[0] || $stdin.read
+end
+
+text = read_input
+abort "#{PROG}: no input" if text.nil? || text.strip.empty?
+
+def fits?(current, part, max_chars)
+  (current.length + part.length + 1) <= max_chars
+end
+
+def join(current, part)
+  current.empty? ? part : "#{current} #{part}"
+end
+
+# :reek:FeatureEnvy
+def pack(chunks, part, max_chars)
+  return [part] if chunks.empty?
+
+  last = chunks.last
+  return chunks[0...-1] + [join(last, part)] if fits?(last, part, max_chars)
+
+  chunks + [part]
+end
+
+def chunk_text(text, max_chars)
+  text.split(/(?<=[.!?…])\s+|\n+/)
+    .reject { |sentence| sentence.strip.empty? }
+    .flat_map { |sentence| sentence.length > max_chars ? split_long(sentence, max_chars) : [sentence] }
+    .reduce([]) { |chunks, sentence| pack(chunks, sentence, max_chars) }
+end
+
+def split_long(sentence, max_chars)
+  sentence.split(/(?<=[,;:])\s+/)
+    .flat_map { |part| part.length > max_chars ? split_words(part, max_chars) : [part] }
+    .reduce([]) { |chunks, part| pack(chunks, part, max_chars) }
+end
+
+# :reek:FeatureEnvy
+def split_words(part, max_chars)
+  part.split
+    .flat_map { |piece| piece.length > max_chars ? piece.scan(/.{1,#{max_chars}}/) : [piece] }
+    .reduce([]) { |chunks, piece| pack(chunks, piece, max_chars) }
+end
+
+chunks = chunk_text(text, CHAR_BUDGET)
+abort "#{PROG}: no chunks produced" if chunks.empty?
+
+tts_base = [
+  "mlx_audio.tts.generate",
+  "--model", MODEL,
+  "--voice", VOICE,
+  "--max_tokens", MAX_TOKENS.to_s,
+  "--audio_format", "mp3"
+]
+
+tmpdir = Dir.mktmpdir(PROG)
+player_reader, player_writer = IO.pipe
+player_pid = spawn("mpv", "--no-video", "--audio-buffer=2", "--speed=#{SPEED}", "-", in: player_reader)
+
+begin
+  chunks.each do |chunk|
+    out_dir = Dir.mktmpdir("chunk", tmpdir)
+    reader, writer = IO.pipe
+    pid = spawn(*tts_base, "--output_path", out_dir, "--file_prefix", "chunk", in: reader)
+    writer.write(chunk)
+    writer.close
+    reader.close
+    _, status = Process.wait2(pid)
+    abort "#{PROG}: TTS failed for a chunk (#{status})" unless status.success?
+
+    out_file = Dir.glob(File.join(out_dir, "*")).find { |f| File.file?(f) }
+    abort "#{PROG}: TTS produced no output for a chunk" if out_file.nil?
+
+    player_writer.write(File.binread(out_file))
+    FileUtils.remove_entry(out_dir)
+  end
+ensure
+  player_writer.close
+  player_reader.close
+  Process.wait(player_pid)
+  FileUtils.remove_entry(tmpdir)
+end

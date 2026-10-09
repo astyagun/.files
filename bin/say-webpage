@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -o pipefail
+
+webpage "$1" | trafilatura --no-comments --deduplicate | say-text
