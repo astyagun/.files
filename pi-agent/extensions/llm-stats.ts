@@ -26,15 +26,24 @@ interface MsgStats {
 	totalMs: number;
 	/** Prefill (time to first token) in ms; 0 when unknown. */
 	ppMs: number;
+	/** Wall-clock tool time after this message, ms (parallel calls merged). */
+	toolMs?: number;
+}
+
+interface ToolTimeData {
+	ms: number;
 }
 
 interface ReportData {
 	totalMs: number;
+	totalToolMs: number;
+	avgTtftMs: number;
 	count: number;
-	buckets: Array<{ size: number; count: number; ppTokens: number; ppMs: number; tgTokens: number; tgMs: number }>;
+	buckets: Array<{ size: number; count: number; ppTokens: number; ppMs: number; tgTokens: number; tgMs: number; toolMs: number }>;
 }
 
 const ENTRY_TYPE = "llm-stats";
+const TOOL_ENTRY_TYPE = "llm-tool-time";
 const REPORT_TYPE = "llm-stats-report";
 
 function fmtTps(tokens: number, ms: number): string {
@@ -70,7 +79,7 @@ function computeBuckets(messages: MsgStats[]): Array<{ size: number } & ReportDa
 		const size = bucketOf(m.ctx);
 		let b = map.get(size);
 		if (!b) {
-			b = { size, count: 0, ppTokens: 0, ppMs: 0, tgTokens: 0, tgMs: 0 };
+			b = { size, count: 0, ppTokens: 0, ppMs: 0, tgTokens: 0, tgMs: 0, toolMs: 0 };
 			map.set(size, b);
 		}
 		b.count++;
@@ -78,10 +87,32 @@ function computeBuckets(messages: MsgStats[]): Array<{ size: number } & ReportDa
 		b.ppMs += m.ppMs;
 		b.tgTokens += m.out;
 		b.tgMs += m.totalMs - m.ppMs;
+		b.toolMs += m.toolMs ?? 0;
 	}
 	const sizes = [...map.keys()].sort((a, b) => a - b);
 	const start = sizes.length > 0 ? Math.min(4096, sizes[0]) : 4096;
 	return [...map.values()].filter((b) => b.size >= start);
+}
+
+function avgTtft(messages: MsgStats[]): number {
+	const known = messages.filter((m) => m.ppMs > 0);
+	return known.length === 0 ? 0 : known.reduce((s, m) => s + m.ppMs, 0) / known.length;
+}
+
+/** Sum of wall-clock time of overlapping intervals (parallel tool calls counted once). */
+function mergeSum(intervals: Array<[number, number]>): number {
+	if (intervals.length === 0) return 0;
+	intervals.sort((a, b) => a[0] - b[0]);
+	let total = 0;
+	let [cs, ce] = intervals[0];
+	for (const [s, e] of intervals.slice(1)) {
+		if (s > ce) {
+			total += ce - cs;
+			cs = s;
+			ce = e;
+		} else if (e > ce) ce = e;
+	}
+	return total + (ce - cs);
 }
 
 export default function (pi: ExtensionAPI) {
@@ -89,18 +120,38 @@ export default function (pi: ExtensionAPI) {
 	let startMs = 0;
 	let firstDeltaMs = 0;
 	let requestRender: (() => void) | undefined;
+	const toolStarts = new Map<string, number>();
+	let toolIntervals: Array<[number, number]> = [];
+
+	// Attribute merged tool time of the finished segment to the last LLM message.
+	const flushToolTime = () => {
+		if (toolIntervals.length === 0) return undefined;
+		const ms = mergeSum(toolIntervals);
+		toolIntervals = [];
+		const last = messages[messages.length - 1];
+		if (!last || ms <= 0) return undefined;
+		last.toolMs = (last.toolMs ?? 0) + ms;
+		pi.appendEntry(TOOL_ENTRY_TYPE, { ms } satisfies ToolTimeData);
+		return ms;
+	};
 
 	const lastStatsText = (): string | undefined => {
 		const last = messages[messages.length - 1];
 		if (!last) return undefined;
-		return `⏱ ${fmtMs(last.totalMs)}  PP ${fmtTps(last.ctx, last.ppMs)} t/s  TG ${fmtTps(last.out, last.totalMs - last.ppMs)} t/s`;
+		const tool = last.toolMs ? `  \u{1f527} ${fmtMs(last.toolMs)}` : "";
+		return `\u23f1 ${fmtMs(last.totalMs)}  TTFT ${fmtMs(last.ppMs)}  PP ${fmtTps(last.ctx, last.ppMs)} t/s  TG ${fmtTps(last.out, last.totalMs - last.ppMs)} t/s${tool}`;
 	};
 
 	const rebuild = (sessionManager: { getBranch(fromId?: string): any[] }) => {
 		messages = [];
+		toolStarts.clear();
+		toolIntervals = [];
 		for (const entry of sessionManager.getBranch()) {
 			if (entry.type === "custom" && entry.customType === ENTRY_TYPE && entry.data) {
 				messages.push(entry.data as MsgStats);
+			} else if (entry.type === "custom" && entry.customType === TOOL_ENTRY_TYPE && entry.data) {
+				const last = messages[messages.length - 1];
+				if (last) last.toolMs = (last.toolMs ?? 0) + ((entry.data as ToolTimeData).ms ?? 0);
 			}
 		}
 	};
@@ -225,9 +276,11 @@ export default function (pi: ExtensionAPI) {
 			if (!d) return t.bold("LLM Stats") + "\n" + t.fg("dim", "No data");
 			let info = `${t.bold("LLM Stats")}\n\n`;
 			info += `${t.fg("dim", "Messages:")} ${d.count}\n`;
-			info += `${t.fg("dim", "Total answer time:")} ${fmtMs(d.totalMs)}\n\n`;
-			info += `${t.bold("By Context Size")}\n\n`;
-			const header = "Context".padEnd(12) + "Msgs".padStart(6) + "PP t/s".padStart(10) + "TG t/s".padStart(10);
+			info += `${t.fg("dim", "Total answer time:")} ${fmtMs(d.totalMs)}\n`;
+			if (d.totalToolMs > 0) info += `${t.fg("dim", "Total tool time:")} ${fmtMs(d.totalToolMs)}\n`;
+			if (d.avgTtftMs > 0) info += `${t.fg("dim", "Avg TTFT:")} ${fmtMs(d.avgTtftMs)}\n`;
+			info += `\n${t.bold("By Context Size")}\n\n`;
+			const header = "Context".padEnd(12) + "Msgs".padStart(6) + "PP t/s".padStart(10) + "TG t/s".padStart(10) + "Tool".padStart(9);
 			info += t.fg("dim", header) + "\n";
 			for (const b of d.buckets) {
 				info +=
@@ -235,6 +288,7 @@ export default function (pi: ExtensionAPI) {
 					`${b.count}`.padStart(6) +
 					`${fmtTps(b.ppTokens, b.ppMs)}`.padStart(10) +
 					`${fmtTps(b.tgTokens, b.tgMs)}`.padStart(10) +
+					`${b.toolMs > 0 ? fmtMs(b.toolMs) : "-"}`.padStart(9) +
 					"\n";
 			}
 			return info.trimEnd();
@@ -260,9 +314,28 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("message_start", async (event) => {
 		if (event.message.role === "assistant") {
+			// Tools that ran before this message belong to the previous one.
+			flushToolTime();
 			startMs = Date.now();
 			firstDeltaMs = 0;
 		}
+	});
+
+	pi.on("tool_execution_start", async (event) => {
+		toolStarts.set(event.toolCallId, Date.now());
+	});
+
+	pi.on("tool_execution_end", async (event) => {
+		const start = toolStarts.get(event.toolCallId);
+		if (start !== undefined) {
+			toolIntervals.push([start, Date.now()]);
+			toolStarts.delete(event.toolCallId);
+		}
+	});
+
+	pi.on("agent_end", async () => {
+		flushToolTime();
+		requestRender?.();
 	});
 
 	pi.on("message_update", async (event) => {
@@ -291,21 +364,24 @@ export default function (pi: ExtensionAPI) {
 	pi.registerCommand("stats", {
 		description: "LLM timing stats: total answer time, PP/TG TPS by context size",
 		handler: async (_args, ctx) => {
+			flushToolTime();
 			if (messages.length === 0) {
 				ctx.ui.notify("No LLM stats yet", "info");
 				return;
 			}
 			const data: ReportData = {
 				totalMs: messages.reduce((s, m) => s + m.totalMs, 0),
+				totalToolMs: messages.reduce((s, m) => s + (m.toolMs ?? 0), 0),
+				avgTtftMs: avgTtft(messages),
 				count: messages.length,
 				buckets: computeBuckets(messages),
 			};
 			if (ctx.mode === "tui") {
 				pi.appendEntry(REPORT_TYPE, data);
 			} else {
-				const lines = [`LLM Stats - ${data.count} messages, total ${fmtMs(data.totalMs)}`];
+				const lines = [`LLM Stats - ${data.count} messages, total ${fmtMs(data.totalMs)}, tool ${fmtMs(data.totalToolMs)}, avg TTFT ${fmtMs(data.avgTtftMs)}`];
 				for (const b of data.buckets) {
-					lines.push(`ctx <=${b.size.toLocaleString()}: ${b.count} msgs  PP ${fmtTps(b.ppTokens, b.ppMs)} t/s  TG ${fmtTps(b.tgTokens, b.tgMs)} t/s`);
+					lines.push(`ctx <=${b.size.toLocaleString()}: ${b.count} msgs  PP ${fmtTps(b.ppTokens, b.ppMs)} t/s  TG ${fmtTps(b.tgTokens, b.tgMs)} t/s  Tool ${b.toolMs > 0 ? fmtMs(b.toolMs) : "-"}`);
 				}
 				ctx.ui.notify(lines.join("\n"), "info");
 			}
