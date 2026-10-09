@@ -18,8 +18,10 @@ import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-c
 import { Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 interface MsgStats {
-	/** Prompt tokens (input + cacheRead + cacheWrite). */
+	/** Full prompt tokens (input + cacheRead + cacheWrite), used for context-size bucketing. */
 	ctx: number;
+	/** Non-cached prompt tokens actually prefilled (input + cacheWrite). */
+	ppTok: number;
 	/** Output tokens. */
 	out: number;
 	/** Total response time in ms. */
@@ -83,7 +85,7 @@ function computeBuckets(messages: MsgStats[]): Array<{ size: number } & ReportDa
 			map.set(size, b);
 		}
 		b.count++;
-		b.ppTokens += m.ctx;
+		b.ppTokens += m.ppTok ?? m.ctx; // older entries lack ppTok
 		b.ppMs += m.ppMs;
 		b.tgTokens += m.out;
 		b.tgMs += m.totalMs - m.ppMs;
@@ -138,8 +140,7 @@ export default function (pi: ExtensionAPI) {
 	const lastStatsText = (): string | undefined => {
 		const last = messages[messages.length - 1];
 		if (!last) return undefined;
-		const tool = last.toolMs ? `  \u{1f527} ${fmtMs(last.toolMs)}` : "";
-		return `\u23f1 ${fmtMs(last.totalMs)}  TTFT ${fmtMs(last.ppMs)}  PP ${fmtTps(last.ctx, last.ppMs)} t/s  TG ${fmtTps(last.out, last.totalMs - last.ppMs)} t/s${tool}`;
+		return `\u23f1 ${fmtMs(last.totalMs)}  TTFT ${fmtMs(last.ppMs)}  PP ${fmtTps(last.ppTok, last.ppMs)} t/s  TG ${fmtTps(last.out, last.totalMs - last.ppMs)} t/s`;
 	};
 
 	const rebuild = (sessionManager: { getBranch(fromId?: string): any[] }) => {
@@ -280,7 +281,7 @@ export default function (pi: ExtensionAPI) {
 			if (d.totalToolMs > 0) info += `${t.fg("dim", "Total tool time:")} ${fmtMs(d.totalToolMs)}\n`;
 			if (d.avgTtftMs > 0) info += `${t.fg("dim", "Avg TTFT:")} ${fmtMs(d.avgTtftMs)}\n`;
 			info += `\n${t.bold("By Context Size")}\n\n`;
-			const header = "Context".padEnd(12) + "Msgs".padStart(6) + "PP t/s".padStart(10) + "TG t/s".padStart(10) + "Tool".padStart(9);
+			const header = "Context".padEnd(12) + "Msgs".padStart(6) + "PP t/s".padStart(10) + "TG t/s".padStart(10);
 			info += t.fg("dim", header) + "\n";
 			for (const b of d.buckets) {
 				info +=
@@ -288,7 +289,6 @@ export default function (pi: ExtensionAPI) {
 					`${b.count}`.padStart(6) +
 					`${fmtTps(b.ppTokens, b.ppMs)}`.padStart(10) +
 					`${fmtTps(b.tgTokens, b.tgMs)}`.padStart(10) +
-					`${b.toolMs > 0 ? fmtMs(b.toolMs) : "-"}`.padStart(9) +
 					"\n";
 			}
 			return info.trimEnd();
@@ -348,10 +348,14 @@ export default function (pi: ExtensionAPI) {
 		const msg = event.message as AssistantMessage;
 		if (msg.role !== "assistant" || !msg.usage) return;
 		const totalMs = typeof msg.durationMs === "number" ? msg.durationMs : Date.now() - startMs;
-		const ppMs = firstDeltaMs > 0 && startMs > 0 ? firstDeltaMs - startMs : 0;
+		// msg.timestamp is the request start; the message_start event can fire much later
+		// (when streaming begins), which would make ppMs ~0 and PP TPS absurdly high.
+		const reqStart = typeof msg.timestamp === "number" && msg.timestamp > 0 ? msg.timestamp : startMs;
+		const ppMs = firstDeltaMs > 0 && reqStart > 0 ? Math.max(0, firstDeltaMs - reqStart) : 0;
 		const usage = msg.usage;
 		const stats: MsgStats = {
 			ctx: (usage.input ?? 0) + (usage.cacheRead ?? 0) + (usage.cacheWrite ?? 0),
+			ppTok: (usage.input ?? 0) + (usage.cacheWrite ?? 0),
 			out: usage.output ?? 0,
 			totalMs,
 			ppMs,
@@ -381,7 +385,7 @@ export default function (pi: ExtensionAPI) {
 			} else {
 				const lines = [`LLM Stats - ${data.count} messages, total ${fmtMs(data.totalMs)}, tool ${fmtMs(data.totalToolMs)}, avg TTFT ${fmtMs(data.avgTtftMs)}`];
 				for (const b of data.buckets) {
-					lines.push(`ctx <=${b.size.toLocaleString()}: ${b.count} msgs  PP ${fmtTps(b.ppTokens, b.ppMs)} t/s  TG ${fmtTps(b.tgTokens, b.tgMs)} t/s  Tool ${b.toolMs > 0 ? fmtMs(b.toolMs) : "-"}`);
+					lines.push(`ctx <=${b.size.toLocaleString()}: ${b.count} msgs  PP ${fmtTps(b.ppTokens, b.ppMs)} t/s  TG ${fmtTps(b.tgTokens, b.tgMs)} t/s`);
 				}
 				ctx.ui.notify(lines.join("\n"), "info");
 			}
