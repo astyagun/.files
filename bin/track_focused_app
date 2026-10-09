@@ -1,24 +1,37 @@
-#!/usr/bin/python3
+#!/usr/bin/env bash
+# Log focused application changes as: `YYYY-mm-dd HH:MM:SS: Name [bundle path]`
+#
+# Uses lsappinfo instead of the AppKit/PyObjC API: no Python, no extra packages,
+# and no Accessibility/Automation permission prompt.
+#
+# Note `lsappinfo info -only <key>` is not a filter: it prints the whole record
+# with the requested value filled in, so both extractions below pick their line
+# out of that dump.
+#
+# No `set -e` on purpose: during login window or app transitions there may be no
+# front application at all, which is a transient state, not an error.
 
-try:
-    # Requires: `pip3 install -U PyObjC`
-    from AppKit import NSWorkspace
-except ImportError:
-    print "Can't import AppKit -- maybe you're running python from brew?"
-    print "Try running with Apple's /usr/bin/python instead."
-    exit(1)
+set -uo pipefail
 
-from datetime import datetime
-from time import sleep
+front=$(lsappinfo front 2>/dev/null)
+last_active_name=""
 
-last_active_name = None
-while True:
-    active_app = NSWorkspace.sharedWorkspace().activeApplication()
-    if active_app['NSApplicationName'] != last_active_name:
-        last_active_name = active_app['NSApplicationName']
-        print('%s: %s [%s]' % (
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            active_app['NSApplicationName'],
-            active_app['NSApplicationPath']
-        ))
-    sleep(1)
+while :; do
+  if [ -n "$front" ]; then
+    # First line looks like: `"Terminal" ASN:0x0-0x84f84f: (in front)`
+    name=$(lsappinfo info -only name "$front" 2>/dev/null | sed -n '1s/^"\(.*\)" ASN.*/\1/p')
+    # The bundle path is the only line ending with `.app`
+    path=$(lsappinfo info -only bundlepath "$front" 2>/dev/null |
+      sed -e 's/^[^=]*=//' -e 's#\\/#/#g' -e 's/^"//' -e 's/"$//' |
+      sed -n 's/^ *\(\/.*\.app\)[ ]*$/\1/p' |
+      head -n1)
+
+    if [ -n "$name" ] && [ "$name" != "$last_active_name" ]; then
+      last_active_name=$name
+      printf '%s: %s [%s]\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$name" "$path"
+    fi
+  fi
+
+  sleep 1
+  front=$(lsappinfo front 2>/dev/null)
+done
