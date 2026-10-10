@@ -4,7 +4,8 @@
  * Mitigates two doom loop failure modes:
  *
  * 1. Loop inside one thinking block. While thinking streams, watch for the
- *    tail n-gram recurring verbatim several times. On detection: abort the
+ *    tail of the block being one text unit repeated back-to-back with no
+ *    variation (…UUU). On detection: abort the
  *    stream (a looping model does not stop by itself; steering cannot reach
  *    hidden thinking mid-stream), then send a steer user message for the
  *    next attempt. Up to STEER_RETRIES per repetition incident (resets on a
@@ -26,8 +27,9 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 // --- tuning ---------------------------------------------------------------
 
 // Thinking-block loop detection.
-const THINK_GRAM = 48; // normalized chars in the tail gram to track
-const THINK_MIN_REPS = 3; // occurrences of the tail gram that mark a loop
+const THINK_GRAM = 48; // normalized chars of tail used to find the period
+const THINK_MIN_REPS = 3; // consecutive repetitions of one unit that mark a loop
+const THINK_MIN_TOTAL = 144; // min thinking length before checking
 const THINK_CHECK_EVERY = 256; // chars of new thinking between checks
 const STEER_RETRIES = 3; // abort+steer attempts per repetition incident
 
@@ -58,14 +60,33 @@ function stableStringify(v: unknown): string {
 		.join(",")}}`;
 }
 
-/** Tail gram repeated THINK_MIN_REPS times => loop. Returns the gram. */
+/**
+ * Loop = text ends with one unit repeated back-to-back, no variation
+ * between repetitions (…UUU). Finds the candidate period from the previous
+ * occurrence of the tail gram, then verifies consecutive repetition
+ * backwards from the end. Returns the repeated unit.
+ */
 function detectLoop(raw: string): string | undefined {
 	const norm = normalize(raw);
-	if (norm.length < THINK_GRAM * THINK_MIN_REPS * 2) return undefined;
-	const gram = norm.slice(norm.length - THINK_GRAM);
-	let reps = 0;
-	for (let i = norm.indexOf(gram); i !== -1; i = norm.indexOf(gram, i + 1)) reps++;
-	return reps >= THINK_MIN_REPS ? gram : undefined;
+	const n = norm.length;
+	if (n < THINK_MIN_TOTAL) return undefined;
+	const gram = norm.slice(n - THINK_GRAM);
+	// Closest previous occurrence of the tail gram => candidate period.
+	// In periodic text the closest occurrence is exactly one period back;
+	// a long gram also catches short-period loops (it spans whole periods).
+	const prev = norm.lastIndexOf(gram, n - THINK_GRAM - 1);
+	if (prev === -1) return undefined;
+	const period = n - THINK_GRAM - prev;
+	if (period <= 0) return undefined;
+	// Verify: unit repeats consecutively back from the end.
+	const unit = norm.slice(n - period);
+	let reps = 1;
+	let pos = n - period;
+	while (pos >= period && norm.startsWith(unit, pos - period)) {
+		reps++;
+		pos -= period;
+	}
+	return reps >= THINK_MIN_REPS ? unit : undefined;
 }
 
 // --- extension ------------------------------------------------------------
@@ -128,11 +149,11 @@ export default function (pi: ExtensionAPI) {
 		buf.text += ev.delta;
 		if (buf.fired || buf.text.length - buf.checked < THINK_CHECK_EVERY) return;
 		buf.checked = buf.text.length;
-		const gram = detectLoop(buf.text);
-		if (!gram) return;
+		const unit = detectLoop(buf.text);
+		if (!unit) return;
 		buf.fired = true;
 		stats.thinkingAborts++;
-		const snippet = gram.slice(0, 60);
+		const snippet = unit.slice(0, 60);
 		try {
 			ctx.abort();
 		} catch {
