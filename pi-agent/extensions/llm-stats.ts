@@ -54,6 +54,22 @@ function fmtTps(tokens: number, ms: number): string {
 	return tps >= 100 ? tps.toFixed(0) : tps.toFixed(1);
 }
 
+/** Compact TPS for the footer: 157k, 84, 8.4 */
+function fmtTpsShort(tokens: number, ms: number): string {
+	if (ms <= 0 || tokens <= 0) return "-";
+	const tps = tokens / (ms / 1000);
+	if (tps >= 10000) return formatTokens(Math.round(tps));
+	return tps >= 10 ? tps.toFixed(0) : tps.toFixed(1);
+}
+
+/** Compact duration for the footer: 850ms, 5s, 1.2s, 2m5s */
+function fmtMsShort(ms: number): string {
+	if (ms < 1000) return `${Math.round(ms)}ms`;
+	if (ms < 10000) return `${(ms / 1000).toFixed(1).replace(/\.0$/, "")}s`;
+	if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+	return `${Math.floor(ms / 60000)}m${Math.round((ms % 60000) / 1000)}s`;
+}
+
 function fmtMs(ms: number): string {
 	if (ms < 1000) return `${Math.round(ms)}ms`;
 	if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
@@ -140,7 +156,7 @@ export default function (pi: ExtensionAPI) {
 	const lastStatsText = (): string | undefined => {
 		const last = messages[messages.length - 1];
 		if (!last) return undefined;
-		return `\u23f1 ${fmtMs(last.totalMs)}  TTFT ${fmtMs(last.ppMs)}  PP ${fmtTps(last.ppTok, last.ppMs)} t/s  TG ${fmtTps(last.out, last.totalMs - last.ppMs)} t/s`;
+		return `\u23f1${fmtMsShort(last.totalMs)} T${fmtMsShort(last.ppMs)} PP${fmtTpsShort(last.ppTok, last.ppMs)}/s TG${fmtTpsShort(last.out, last.totalMs - last.ppMs)}/s`;
 	};
 
 	const rebuild = (sessionManager: { getBranch(fromId?: string): any[] }) => {
