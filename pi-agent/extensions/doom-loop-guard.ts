@@ -36,7 +36,7 @@ const STEER_RETRIES = 3; // abort+steer attempts per repetition incident
 // Repeated tool call detection.
 const TOOL_WARN_AFTER = 2; // identical calls before warning
 const TOOL_BLOCK_AFTER = 3; // identical calls before blocking
-const TOOL_WINDOW = 12; // look at last N tool calls
+const TOOL_WINDOW = 12; // max tool-call history kept (consecutive repeats only)
 
 // Repeated assistant content detection.
 const TEXT_MIN_CHARS = 80; // skip short messages
@@ -111,17 +111,42 @@ export default function (pi: ExtensionAPI) {
 		repeatStreak = 0;
 	}
 
+	// Nonces embedded in our own steer messages, so we can recognize them when
+	// they come back as user messages and not treat them as new user intent.
+	// Random per steer: a user typing "doom-loop-guard:" cannot reproduce a nonce.
+	const issuedSteerNonces = new Set<string>();
+
+	function makeSteerMarker(): string {
+		if (issuedSteerNonces.size > 16) issuedSteerNonces.delete(issuedSteerNonces.values().next().value!);
+		const nonce = Math.random().toString(36).slice(2, 10);
+		issuedSteerNonces.add(nonce);
+		return `[dlg:${nonce}]`;
+	}
+
+	function isOwnSteerMessage(text: string): boolean {
+		const m = /\[dlg:([0-9a-z]+)\]/.exec(text);
+		if (!m) return false;
+		return issuedSteerNonces.delete(m[1]);
+	}
+
+	function userMessageText(message: { content: string | Array<{ type: string; text?: string }> }): string {
+		if (typeof message.content === "string") return message.content;
+		return message.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join(" ");
+	}
+
 	pi.on("session_start", async () => {
 		thinkBufs = new Map();
 		steerRetries = 0;
+		issuedSteerNonces.clear();
 		resetCrossMessage();
 	});
 
 	pi.on("message_start", async (event) => {
 		const role = event.message.role;
 		if (role === "assistant") thinkBufs = new Map();
-		// New user intent: previous repetition no longer counts.
-		if (role === "user") {
+		// New user intent: previous repetition no longer counts. Our own steer
+		// messages arrive as user messages too: they must NOT reset the counters.
+		if (role === "user" && !isOwnSteerMessage(userMessageText(event.message))) {
 			steerRetries = 0;
 			resetCrossMessage();
 		}
@@ -173,6 +198,7 @@ export default function (pi: ExtensionAPI) {
 					"Stop that line of reasoning. In short thinking, list what you have established so far,",
 					"then take a clearly different approach: re-read the actual file or command output,",
 					"try a different tool, or state the concrete blocker. Do not restate the same reasoning.",
+					makeSteerMarker(),
 				].join(" "),
 				{ deliverAs: "steer" },
 			);
@@ -188,9 +214,12 @@ export default function (pi: ExtensionAPI) {
 	pi.on("tool_call", async (event, ctx) => {
 		if (!enabled || event.parentToolCallId) return;
 		const sig = `${event.toolName}|${stableStringify(event.input)}`;
-		const reps = toolSigs.slice(-TOOL_WINDOW).filter((s) => s === sig).length + 1;
+		// Count only consecutive identical calls directly before this one.
+		let consec = 0;
+		for (let i = toolSigs.length - 1; i >= 0 && toolSigs[i] === sig; i--) consec++;
+		const reps = consec + 1;
 		toolSigs.push(sig);
-		if (toolSigs.length > 64) toolSigs.shift();
+		if (toolSigs.length > TOOL_WINDOW) toolSigs.shift();
 		if (reps >= TOOL_BLOCK_AFTER) {
 			stats.toolBlocks++;
 			ctx.ui.notify(`doom-loop-guard: blocked repeated ${event.toolName} call (${reps}x identical)`, "warning");
@@ -272,6 +301,8 @@ export default function (pi: ExtensionAPI) {
 					stats.toolBlocks = 0;
 					stats.nudges = 0;
 					steerRetries = 0;
+					thinkBufs = new Map();
+					issuedSteerNonces.clear();
 					resetCrossMessage();
 					ctx.ui.notify("doom-loop-guard: counters and loop history reset", "info");
 					return;

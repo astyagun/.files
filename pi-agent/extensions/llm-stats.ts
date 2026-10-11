@@ -6,7 +6,8 @@
  * terminals they fall back to their own line.
  *
  * /stats: session aggregates - total LLM answer time, PP/TG TPS bucketed by
- * context size (powers of two, starting at 4096 or lower for small sessions),
+ * context size (powers of two, smallest bucket is 4096; everything below
+ * 4096 context tokens lands in the 4096 bucket),
  * rendered in chat in native /session style (bold headers, dim labels, table).
  *
  * Per-message stats are persisted as custom session entries so aggregates
@@ -67,18 +68,18 @@ function fmtMsShort(ms: number): string {
 	if (ms < 1000) return `${Math.round(ms)}ms`;
 	if (ms < 10000) return `${(ms / 1000).toFixed(1).replace(/\.0$/, "")}s`;
 	if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-	return `${Math.floor(ms / 60000)}m${Math.round((ms % 60000) / 1000)}s`;
+	return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
 }
 
 function fmtMs(ms: number): string {
 	if (ms < 1000) return `${Math.round(ms)}ms`;
 	if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
 	const m = Math.floor(ms / 60000);
-	return `${m}m${Math.round((ms % 60000) / 1000)}s`;
+	return `${m}m${Math.floor((ms % 60000) / 1000)}s`;
 }
 
 function bucketOf(ctxTokens: number): number {
-	let b = 512;
+	let b = 4096;
 	while (b < ctxTokens) b *= 2;
 	return b;
 }
@@ -107,9 +108,7 @@ function computeBuckets(messages: MsgStats[]): Array<{ size: number } & ReportDa
 		b.tgMs += m.totalMs - m.ppMs;
 		b.toolMs += m.toolMs ?? 0;
 	}
-	const sizes = [...map.keys()].sort((a, b) => a - b);
-	const start = sizes.length > 0 ? Math.min(4096, sizes[0]) : 4096;
-	return [...map.values()].filter((b) => b.size >= start);
+	return [...map.values()].sort((a, b) => a.size - b.size);
 }
 
 function avgTtft(messages: MsgStats[]): number {
@@ -273,7 +272,6 @@ export default function (pi: ExtensionAPI) {
 
 					// Other extension statuses (our stats are not set via setStatus)
 					const others = Array.from(footerData.getExtensionStatuses().entries())
-						.filter(([k]) => k !== "llm-stats")
 						.sort(([a], [b]) => a.localeCompare(b))
 						.map(([, t]) => t.replace(/[\r\n\t]/g, " ").replace(/ +/g, " ").trim());
 					if (others.length > 0) lines.push(truncateToWidth(others.join(" "), width, theme.fg("dim", "...")));
