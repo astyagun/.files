@@ -11,13 +11,12 @@
  *    next attempt. Up to STEER_RETRIES per repetition incident (resets on a
  *    clean thinking block), then give up with plain abort + warning.
  *
- * 2. Loop across LLM messages.
- *    - Identical tool calls (same name + same arguments) repeated in a row:
- *      warn at 2x, block at 3x with an instructive reason the model sees.
- *    - Identical assistant text or thinking across messages: inject a
- *      hidden nudge message telling the model to change strategy, warn the
- *      user if repetition continues. Match is exact (after whitespace/case
- *      normalization), no fuzzy similarity.
+ * 2. Loop across LLM messages. A message is a repeat only if the whole
+ *    message (thinking + text + tool calls) is identical to a previous one,
+ *    or an identical group of messages repeats. Match is exact (after
+ *    whitespace/case normalization), no fuzzy similarity. Escalation mirrors
+ *    the thinking loop: first nudge after the 3rd repeat, nudge again at the
+ *    6th, abort at the 9th.
  *
  * /doomguard - toggle guard, show counters.
  */
@@ -33,14 +32,12 @@ const THINK_MIN_TOTAL = 144; // min thinking length before checking
 const THINK_CHECK_EVERY = 256; // chars of new thinking between checks
 const STEER_RETRIES = 3; // abort+steer attempts per repetition incident
 
-// Repeated tool call detection.
-const TOOL_WARN_AFTER = 2; // identical calls before warning
-const TOOL_BLOCK_AFTER = 3; // identical calls before blocking
-const TOOL_WINDOW = 12; // max tool-call history kept (consecutive repeats only)
-
-// Repeated assistant content detection.
-const TEXT_MIN_CHARS = 80; // skip short messages
-const TEXT_WINDOW = 6; // compare against last N exact texts
+// Repeated message detection (whole message: thinking + text + tool calls).
+const MSG_MIN_CHARS = 40; // skip trivial messages
+const MSG_WINDOW = 8; // compare against last N message signatures
+const REPEAT_NUDGE_1 = 3; // first nudge after this many repeats
+const REPEAT_NUDGE_2 = 6; // second nudge
+const REPEAT_ABORT = 9; // final abort
 
 const NUDGE_TYPE = "doom-loop-guard";
 
@@ -58,6 +55,40 @@ function stableStringify(v: unknown): string {
 		.sort()
 		.map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`)
 		.join(",")}}`;
+}
+
+/**
+ * Canonical signature of an assistant message: normalized thinking + text +
+ * tool calls (name + stable args), joined. Two messages are repeats only if
+ * their signatures are identical.
+ */
+function messageSignature(m: { content: Array<{ type: string; thinking?: string; text?: string; name?: string; arguments?: unknown }> }): string {
+	const parts: string[] = [];
+	for (const c of m.content) {
+		if (c.type === "thinking") parts.push("T:" + normalize(c.thinking ?? ""));
+		else if (c.type === "text") parts.push("X:" + normalize(c.text ?? ""));
+		else if (c.type === "toolCall") parts.push("C:" + c.name + "|" + stableStringify(c.arguments));
+	}
+	return parts.join(";");
+}
+
+/**
+ * True when the last K messages (K=2..4) equal the K before them — an
+ * identical group/cycle of messages repeating (e.g. A B A B).
+ */
+function isGroupRepeat(sigs: string[]): boolean {
+	for (let k = 2; k <= 4; k++) {
+		if (sigs.length < 2 * k) continue;
+		let match = true;
+		for (let i = 0; i < k; i++) {
+			if (sigs[sigs.length - k + i] !== sigs[sigs.length - 2 * k + i]) {
+				match = false;
+				break;
+			}
+		}
+		if (match) return true;
+	}
+	return false;
 }
 
 /**
@@ -93,21 +124,21 @@ function detectLoop(raw: string): string | undefined {
 
 export default function (pi: ExtensionAPI) {
 	let enabled = true;
-	const stats = { thinkingAborts: 0, thinkingSteers: 0, toolWarns: 0, toolBlocks: 0, nudges: 0 };
+	const stats = { thinkingAborts: 0, thinkingSteers: 0, nudges: 0, msgAborts: 0 };
 
 	// Thinking stream state: contentIndex -> buffer.
 	let thinkBufs = new Map<number, { text: string; checked: number; fired: boolean }>();
 	// Consecutive thinking-loop incidents without a clean thinking block in between.
 	let steerRetries = 0;
+	// Whether a loop fired in the current assistant message; guards the thinking_end reset.
+	let loopFiredInMessage = false;
 
-	// Cross-message state.
-	let toolSigs: string[] = [];
-	let recentTexts: string[] = [];
+	// Cross-message state: recent whole-message signatures + repeat streak.
+	let recentSigs: string[] = [];
 	let repeatStreak = 0;
 
 	function resetCrossMessage() {
-		toolSigs = [];
-		recentTexts = [];
+		recentSigs = [];
 		repeatStreak = 0;
 	}
 
@@ -117,7 +148,6 @@ export default function (pi: ExtensionAPI) {
 	const issuedSteerNonces = new Set<string>();
 
 	function makeSteerMarker(): string {
-		if (issuedSteerNonces.size > 16) issuedSteerNonces.delete(issuedSteerNonces.values().next().value!);
 		const nonce = Math.random().toString(36).slice(2, 10);
 		issuedSteerNonces.add(nonce);
 		return `[dlg:${nonce}]`;
@@ -137,13 +167,17 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async () => {
 		thinkBufs = new Map();
 		steerRetries = 0;
+		loopFiredInMessage = false;
 		issuedSteerNonces.clear();
 		resetCrossMessage();
 	});
 
 	pi.on("message_start", async (event) => {
 		const role = event.message.role;
-		if (role === "assistant") thinkBufs = new Map();
+		if (role === "assistant") {
+			thinkBufs = new Map();
+			loopFiredInMessage = false;
+		}
 		// New user intent: previous repetition no longer counts. Our own steer
 		// messages arrive as user messages too: they must NOT reset the counters.
 		if (role === "user" && !isOwnSteerMessage(userMessageText(event.message))) {
@@ -161,8 +195,10 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		if (ev.type === "thinking_end") {
-			// A thinking block completed without a loop: incident over.
-			if (steerRetries > 0 && !thinkBufs.get(ev.contentIndex)?.fired) steerRetries = 0;
+			// A thinking block completed without a loop: incident over. Only reset when
+			// no loop fired anywhere in this message (a clean block right after an
+			// aborted loop in the same message must not clear the incident).
+			if (steerRetries > 0 && !loopFiredInMessage && !thinkBufs.get(ev.contentIndex)?.fired) steerRetries = 0;
 			return;
 		}
 		if (ev.type !== "thinking_delta") return;
@@ -177,101 +213,82 @@ export default function (pi: ExtensionAPI) {
 		const unit = detectLoop(buf.text);
 		if (!unit) return;
 		buf.fired = true;
+		loopFiredInMessage = true;
 		stats.thinkingAborts++;
 		const snippet = unit.slice(0, 60);
-		try {
-			ctx.abort();
-		} catch {
-			// already idle
-		}
+		if (!ctx.isIdle()) ctx.abort();
 		if (steerRetries < STEER_RETRIES) {
 			steerRetries++;
 			stats.thinkingSteers++;
-			ctx.ui.notify(
-				`doom-loop-guard: thinking loop ("${snippet}" x${THINK_MIN_REPS}). Abort ${steerRetries}/${STEER_RETRIES}, steering.`,
-				"warning",
-			);
 			pi.sendUserMessage(
 				[
-					"doom-loop-guard: your previous thinking looped, repeating this verbatim several times:",
+					"doom-loop-guard: thinking looped, repeating this verbatim:",
 					`"${snippet}"`,
-					"Stop that line of reasoning. In short thinking, list what you have established so far,",
-					"then take a clearly different approach: re-read the actual file or command output,",
-					"try a different tool, or state the concrete blocker. Do not restate the same reasoning.",
+					"Stop. Change approach: re-read the file/output, try a different tool, or state the blocker. Do not restate.",
 					makeSteerMarker(),
 				].join(" "),
 				{ deliverAs: "steer" },
 			);
-		} else {
-			ctx.ui.notify(
-				`doom-loop-guard: thinking loop persists after ${STEER_RETRIES} steer attempts. Aborted. Rephrase the task or intervene manually.`,
-				"error",
-			);
 		}
 	});
 
-	// 2a. Identical tool calls: warn, then block.
-	pi.on("tool_call", async (event, ctx) => {
-		if (!enabled || event.parentToolCallId) return;
-		const sig = `${event.toolName}|${stableStringify(event.input)}`;
-		// Count only consecutive identical calls directly before this one.
-		let consec = 0;
-		for (let i = toolSigs.length - 1; i >= 0 && toolSigs[i] === sig; i--) consec++;
-		const reps = consec + 1;
-		toolSigs.push(sig);
-		if (toolSigs.length > TOOL_WINDOW) toolSigs.shift();
-		if (reps >= TOOL_BLOCK_AFTER) {
-			stats.toolBlocks++;
-			ctx.ui.notify(`doom-loop-guard: blocked repeated ${event.toolName} call (${reps}x identical)`, "warning");
-			return {
-				block: true,
-				reason:
-					`doom-loop-guard: identical ${event.toolName} call already made ${reps - 1}x with identical arguments. Blocked. ` +
-					"Do not repeat it. Change the arguments, use a different tool, or explain the blocker to the user.",
-			};
-		}
-		if (reps === TOOL_WARN_AFTER) {
-			stats.toolWarns++;
-			ctx.ui.notify(`doom-loop-guard: identical ${event.toolName} call repeated ${reps}x`, "warning");
-		}
-	});
-
-	// 2b. Identical assistant content across messages: nudge.
+	// 2. Identical whole messages across messages: nudge, then abort.
 	pi.on("message_end", async (event, ctx) => {
 		const m = event.message;
 		if (!enabled || m.role !== "assistant") return;
-		const parts: string[] = [];
-		for (const c of m.content) {
-			if (c.type === "text") parts.push(c.text);
-			else if (c.type === "thinking") parts.push(c.thinking);
-		}
-		const texts = parts.map(normalize).filter((t) => t.length >= TEXT_MIN_CHARS);
-		if (texts.length === 0) {
+		const sig = messageSignature(m);
+		if (sig.length < MSG_MIN_CHARS) {
 			repeatStreak = 0;
 			return;
 		}
-		const repeated = texts.some((t) => recentTexts.includes(t));
-		recentTexts.push(...texts);
-		while (recentTexts.length > TEXT_WINDOW) recentTexts.shift();
+		// A repeat is a consecutive identical message (A A A) or an identical
+		// group/cycle (A B A B). A message matching an earlier one with variation
+		// in between (A B A C A D) is NOT a repeat.
+		const repeated =
+			(recentSigs.length > 0 && recentSigs[recentSigs.length - 1] === sig) ||
+			isGroupRepeat(recentSigs);
+		recentSigs.push(sig);
+		while (recentSigs.length > MSG_WINDOW) recentSigs.shift();
 
 		if (!repeated) {
 			repeatStreak = 0;
 			return;
 		}
 		repeatStreak++;
-		if (repeatStreak === 1) {
+		if (repeatStreak === REPEAT_NUDGE_1) {
 			stats.nudges++;
-			pi.sendMessage({
-				customType: NUDGE_TYPE,
-				content:
-					"doom-loop-guard: this assistant message repeats content already produced earlier in this run, verbatim. " +
-					"You appear to be looping. Do not repeat the same content or tool calls. " +
-					"Change approach (different tool, different arguments, re-read the failing output) or report the blocker to the user.",
-				display: false,
-			});
-			ctx.ui.notify("doom-loop-guard: assistant message repeated verbatim, nudged model", "warning");
-		} else if (repeatStreak === 3) {
-			ctx.ui.notify("doom-loop-guard: model keeps repeating itself. Consider aborting (Esc) and rephrasing the task.", "error");
+			pi.sendMessage(
+				{
+					customType: NUDGE_TYPE,
+					content:
+						"doom-loop-guard: this assistant message repeats a previous message verbatim (thinking, text, and tool calls). " +
+						"You appear to be looping. Change approach or report the blocker to the user.",
+					display: true,
+				},
+				{ triggerTurn: true },
+			);
+		} else if (repeatStreak === REPEAT_NUDGE_2) {
+			stats.nudges++;
+			pi.sendMessage(
+				{
+					customType: NUDGE_TYPE,
+					content:
+						"doom-loop-guard: the same message keeps repeating. Stop looping: change approach or report the blocker to the user.",
+					display: true,
+				},
+				{ triggerTurn: true },
+			);
+		} else if (repeatStreak === REPEAT_ABORT) {
+			stats.msgAborts++;
+			if (!ctx.isIdle()) ctx.abort();
+			pi.sendMessage(
+				{
+					customType: NUDGE_TYPE,
+					content: "doom-loop-guard: model keeps repeating the same message. Aborted. Rephrase the task or intervene manually.",
+					display: true,
+				},
+				{ triggerTurn: false },
+			);
 		}
 	});
 
@@ -282,7 +299,7 @@ export default function (pi: ExtensionAPI) {
 			switch (sub) {
 				case "":
 					ctx.ui.notify(
-						`doom-loop-guard ${enabled ? "ON" : "OFF"} | thinking aborts: ${stats.thinkingAborts} (steers: ${stats.thinkingSteers}) | tool warns: ${stats.toolWarns} | tool blocks: ${stats.toolBlocks} | nudges: ${stats.nudges} | subcommands: on, off, reset`,
+						`doom-loop-guard ${enabled ? "ON" : "OFF"} | thinking aborts: ${stats.thinkingAborts} (steers: ${stats.thinkingSteers}) | msg nudges: ${stats.nudges} | msg aborts: ${stats.msgAborts} | subcommands: on, off, reset`,
 						"info",
 					);
 					return;
@@ -297,9 +314,8 @@ export default function (pi: ExtensionAPI) {
 				case "reset":
 					stats.thinkingAborts = 0;
 					stats.thinkingSteers = 0;
-					stats.toolWarns = 0;
-					stats.toolBlocks = 0;
 					stats.nudges = 0;
+					stats.msgAborts = 0;
 					steerRetries = 0;
 					thinkBufs = new Map();
 					issuedSteerNonces.clear();
