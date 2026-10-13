@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Track macOS screen captures in a tmux window split into two panes:
+#
+#   left  - `fs_usage` exec events, catches `screencapture` runs
+#   right - shutter sound event from systemsoundserverd, catches UI captures
+#           (Control Center, Shift-Cmd-3/4/5) which do not go through the CLI
+#
+# Window goes to index 9, so `prefix 9` jumps back to it.
+# Each pane prints a banner saying what it tracks, and `-m` keeps a pane open
+# after its command exits with a message asking for a keypress.
+#
+# `-k`/`-m` exist for `split-window` only, `new-window` has no such flag, hence
+# the placeholder pane: both tracked commands run in `split-window -m` panes and
+# the placeholder gets killed.
+#
+# Panes are addressed by pane id captured with `-P`: a `%pane`/`@window` id can't
+# be combined into an `@window.pane` target.
+#
+# Commands are handed to tmux through pane environment variables (`-e`) and
+# expanded by the pane shell, so no nested quoting around the log predicate.
+
+set -euo pipefail
+
+if [ -z "${TMUX:-}" ]; then
+  echo "Run inside tmux." >&2
+  exit 1
+fi
+
+exec_cmd='printf "Tracking screencapture exec events (fs_usage)\n\n"; sudo fs_usage -w -f exec | grep --line-buffered -i screencapture'
+log_cmd='printf "Tracking screen capture shutter sound (log stream)\n\n"; log stream --style compact --predicate '"'"'process=="systemsoundserverd" AND eventMessage CONTAINS "Screen Capture.aif"'"'"''
+
+# Placeholder pane of the new window, killed at the end
+window=$(tmux new-window -P -F '#{window_id}' -t 9 -n 'track-screencapture')
+placeholder=$(tmux display-message -p -t "$window" '#{pane_id}')
+
+# `-b` puts the new pane to the left of the placeholder. First split takes focus
+# (no `-d`), the second one does not, so the left pane stays active and killing
+# the placeholder is safe.
+# shellcheck disable=SC2016
+tmux split-window -h -b -m 'fs_usage exited, press any key to close the pane' -t "$placeholder" -e "CMD=$exec_cmd" 'bash -c "$CMD"'
+# shellcheck disable=SC2016
+tmux split-window -h -d -m 'log stream exited, press any key to close the pane' -t "$placeholder" -e "CMD=$log_cmd" 'bash -c "$CMD"'
+
+tmux kill-pane -t "$placeholder"
