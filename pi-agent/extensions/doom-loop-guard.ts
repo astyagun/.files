@@ -3,20 +3,36 @@
  *
  * Mitigates two doom loop failure modes:
  *
- * 1. Loop inside one thinking block. While thinking streams, watch for the
- *    tail of the block being one text unit repeated back-to-back with no
- *    variation (…UUU). On detection: abort the
- *    stream (a looping model does not stop by itself; steering cannot reach
- *    hidden thinking mid-stream), then send a steer user message for the
- *    next attempt. Up to STEER_RETRIES per repetition incident (resets on a
- *    clean thinking block), then give up with plain abort + warning.
+ * 1. Loop inside one thinking block. While thinking streams, split the block
+ *    into paragraphs (text between blank lines). Every completed paragraph is
+ *    stored and takes part in verification — everything between repetitions
+ *    must repeat too, short paragraphs included. A paragraph with at least
+ *    PARAGRAPH_MIN_WORDS words (and a letter or number) that exactly equals
+ *    an earlier paragraph anchors repetition candidates, one per distinct
+ *    distance to such an occurrence. Each candidate must keep matching: every
+ *    following paragraph has to equal its period-step-back predecessor,
+ *    otherwise the candidate is dropped. Fire when a candidate has matched
+ *    (FIRE_AFTER_CYCLES - 1) * period paragraphs in a row — the cycle has
+ *    then been seen FIRE_AFTER_CYCLES times in full (a 5-paragraph cycle
+ *    fires at 15 paragraphs). On fire: abort the stream (a looping model
+ *    does not stop by itself; steering cannot reach hidden thinking
+ *    mid-stream) and queue the retry message; it is delivered automatically
+ *    once the aborted run settles (a steer queued behind an abort is never
+ *    drained in that run), starting a fresh run. Up to STEER_RETRIES per
+ *    repetition incident (resets on a clean thinking block), then give up
+ *    with plain abort + warning.
  *
  * 2. Loop across LLM messages. A message is a repeat only if the whole
- *    message (thinking + text + tool calls) is identical to a previous one,
- *    or an identical group of messages repeats. Match is exact (after
- *    whitespace/case normalization), no fuzzy similarity. Escalation mirrors
- *    the thinking loop: first nudge after the 3rd repeat, nudge again at the
- *    6th, abort at the 9th.
+ *    message (thinking + text + tool calls) is identical to a previous one.
+ *    Match is exact (after whitespace/case normalization), no fuzzy
+ *    similarity. Repetition tracking mirrors the thinking guard: a message
+ *    identical to an earlier one anchors repetition candidates (one per
+ *    distinct distance, any period); every following message must keep
+ *    matching its period-step-back predecessor or the candidate is dropped.
+ *    Escalation counts full repetitions of the repeated cycle: first nudge
+ *    when the cycle has appeared 3 times, second at 6, abort at 9 (abort +
+ *    warning entry, delivered once the run settles; a final abort suppresses
+ *    any pending retry — nothing may follow it).
  *
  * /doomguard - toggle guard, show counters.
  */
@@ -25,17 +41,14 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 // --- tuning ---------------------------------------------------------------
 
-// Thinking-block loop detection.
-const THINK_GRAM = 48; // normalized chars of tail used to find the period
-const THINK_MIN_REPS = 3; // consecutive repetitions of one unit that mark a loop
-const THINK_MIN_TOTAL = 144; // min thinking length before checking
-const THINK_CHECK_EVERY = 256; // chars of new thinking between checks
+// Thinking-block loop detection (paragraph repetition).
+const PARAGRAPH_MIN_WORDS = 3; // paragraphs with fewer words never anchor a candidate
+const FIRE_AFTER_CYCLES = 3; // fire when the repeated cycle has repeated this many times in full
 const STEER_RETRIES = 3; // abort+steer attempts per repetition incident
 
 // Repeated message detection (whole message: thinking + text + tool calls).
 const MSG_MIN_CHARS = 40; // skip trivial messages
-const MSG_WINDOW = 8; // compare against last N message signatures
-const REPEAT_NUDGE_1 = 3; // first nudge after this many repeats
+const REPEAT_NUDGE_1 = 3; // first nudge when the repeated cycle has appeared this many times
 const REPEAT_NUDGE_2 = 6; // second nudge
 const REPEAT_ABORT = 9; // final abort
 
@@ -73,51 +86,62 @@ function messageSignature(m: { content: Array<{ type: string; thinking?: string;
 }
 
 /**
- * True when the last K messages (K=2..4) equal the K before them — an
- * identical group/cycle of messages repeating (e.g. A B A B).
+ * Streaming state for one thinking block: raw text so far, the offset of the
+ * paragraph currently being streamed, completed paragraphs, and the active
+ * repetition candidates.
  */
-function isGroupRepeat(sigs: string[]): boolean {
-	for (let k = 2; k <= 4; k++) {
-		if (sigs.length < 2 * k) continue;
-		let match = true;
-		for (let i = 0; i < k; i++) {
-			if (sigs[sigs.length - k + i] !== sigs[sigs.length - 2 * k + i]) {
-				match = false;
-				break;
-			}
-		}
-		if (match) return true;
-	}
-	return false;
-}
+type ThinkBuf = {
+	text: string;
+	/** Offset of the start of the paragraph currently being streamed. */
+	consumed: number;
+	/** Completed paragraphs in order, short and empty ones included. */
+	paras: string[];
+	/** Active repetition candidates: verified period + matched paragraph count. */
+	candidates: { period: number; matched: number }[];
+	fired: boolean;
+};
 
 /**
- * Loop = text ends with one unit repeated back-to-back, no variation
- * between repetitions (…UUU). Finds the candidate period from the previous
- * occurrence of the tail gram, then verifies consecutive repetition
- * backwards from the end. Returns the repeated unit.
+ * Feed one completed thinking paragraph into the repetition tracker.
+ *
+ * - Every completed paragraph is stored; all of them take part in candidate
+ *   verification (everything between repetitions must repeat too).
+ * - Active candidates verify: the paragraph must equal its period-step-back
+ *   predecessor; a mismatch drops the candidate.
+ * - A paragraph with >= PARAGRAPH_MIN_WORDS words and at least one
+ *   letter/number anchors a new candidate for every distinct distance to an
+ *   earlier identical paragraph (empty lines, brackets, dividers never
+ *   anchor). Periods already tracked are not duplicated.
+ * - Fire when a candidate has matched (FIRE_AFTER_CYCLES - 1) * period
+ *   paragraphs in a row: the cycle has been seen FIRE_AFTER_CYCLES times in
+ *   full (a 5-paragraph cycle fires at 15 paragraphs). Returns the smallest
+ *   firing period, else undefined.
  */
-function detectLoop(raw: string): string | undefined {
-	const norm = normalize(raw);
-	const n = norm.length;
-	if (n < THINK_MIN_TOTAL) return undefined;
-	const gram = norm.slice(n - THINK_GRAM);
-	// Closest previous occurrence of the tail gram => candidate period.
-	// In periodic text the closest occurrence is exactly one period back;
-	// a long gram also catches short-period loops (it spans whole periods).
-	const prev = norm.lastIndexOf(gram, n - THINK_GRAM - 1);
-	if (prev === -1) return undefined;
-	const period = n - THINK_GRAM - prev;
-	if (period <= 0) return undefined;
-	// Verify: unit repeats consecutively back from the end.
-	const unit = norm.slice(n - period);
-	let reps = 1;
-	let pos = n - period;
-	while (pos >= period && norm.startsWith(unit, pos - period)) {
-		reps++;
-		pos -= period;
+function trackParagraph(buf: ThinkBuf, para: string): { period: number } | undefined {
+	buf.paras.push(para);
+	const m = buf.paras.length - 1;
+	let firePeriod: number | undefined;
+	for (let c = buf.candidates.length - 1; c >= 0; c--) {
+		const cand = buf.candidates[c];
+		if (para === buf.paras[m - cand.period]) {
+			cand.matched++;
+			if (cand.matched >= (FIRE_AFTER_CYCLES - 1) * cand.period) {
+				firePeriod = firePeriod === undefined ? cand.period : Math.min(firePeriod, cand.period);
+			}
+		} else {
+			buf.candidates.splice(c, 1);
+		}
 	}
-	return reps >= THINK_MIN_REPS ? unit : undefined;
+	if (firePeriod !== undefined) return { period: firePeriod };
+	const words = para.split(/\s+/).filter(Boolean);
+	if (words.length < PARAGRAPH_MIN_WORDS || !/\p{L}|\p{N}/u.test(para)) return undefined;
+	// Anchor: one candidate per distinct distance to an earlier identical paragraph.
+	for (let i = 0; i < m; i++) {
+		if (buf.paras[i] !== para) continue;
+		const period = m - i;
+		if (!buf.candidates.some((c) => c.period === period)) buf.candidates.push({ period, matched: 1 });
+	}
+	return undefined;
 }
 
 // --- extension ------------------------------------------------------------
@@ -126,20 +150,33 @@ export default function (pi: ExtensionAPI) {
 	let enabled = true;
 	const stats = { thinkingAborts: 0, thinkingSteers: 0, nudges: 0, msgAborts: 0 };
 
-	// Thinking stream state: contentIndex -> buffer.
-	let thinkBufs = new Map<number, { text: string; checked: number; fired: boolean }>();
+	// Thinking stream state: contentIndex -> paragraph repetition tracker.
+	let thinkBufs = new Map<number, ThinkBuf>();
 	// Consecutive thinking-loop incidents without a clean thinking block in between.
 	let steerRetries = 0;
 	// Whether a loop fired in the current assistant message; guards the thinking_end reset.
 	let loopFiredInMessage = false;
+	// Retry message queued at fire time, delivered once the aborted run settles
+	// (a steer queued behind an abort is never drained in the aborted run).
+	let pendingSteer: string | undefined;
+	// Final-abort warning queued at level 9, delivered the same way; suppresses
+	// any pending retry — nothing may follow a final abort.
+	let pendingWarning: string | undefined;
 
-	// Cross-message state: recent whole-message signatures + repeat streak.
-	let recentSigs: string[] = [];
-	let repeatStreak = 0;
+	// Cross-message state: history of non-trivial message signatures + repetition
+	// candidates (same tracker shape as the thinking guard, any period).
+	let msgSigs: string[] = [];
+	let msgCandidates: { period: number; matched: number }[] = [];
+	// Nudge flags: one nudge per level per repetition incident; reset when the
+	// candidate list empties (a non-repeated message ended the incident).
+	let nudge1Done = false;
+	let nudge2Done = false;
 
 	function resetCrossMessage() {
-		recentSigs = [];
-		repeatStreak = 0;
+		msgSigs = [];
+		msgCandidates = [];
+		nudge1Done = false;
+		nudge2Done = false;
 	}
 
 	// Nonces embedded in our own steer messages, so we can recognize them when
@@ -168,6 +205,8 @@ export default function (pi: ExtensionAPI) {
 		thinkBufs = new Map();
 		steerRetries = 0;
 		loopFiredInMessage = false;
+		pendingSteer = undefined;
+		pendingWarning = undefined;
 		issuedSteerNonces.clear();
 		resetCrossMessage();
 	});
@@ -182,6 +221,8 @@ export default function (pi: ExtensionAPI) {
 		// messages arrive as user messages too: they must NOT reset the counters.
 		if (role === "user" && !isOwnSteerMessage(userMessageText(event.message))) {
 			steerRetries = 0;
+			pendingSteer = undefined; // real user intent supersedes a queued retry
+			pendingWarning = undefined;
 			resetCrossMessage();
 		}
 	});
@@ -191,45 +232,80 @@ export default function (pi: ExtensionAPI) {
 		const ev = event.assistantMessageEvent;
 		if (!enabled) return;
 		if (ev.type === "thinking_start") {
-			thinkBufs.set(ev.contentIndex, { text: "", checked: 0, fired: false });
+			thinkBufs.set(ev.contentIndex, { text: "", consumed: 0, paras: [], candidates: [], fired: false });
 			return;
 		}
 		if (ev.type === "thinking_end") {
 			// A thinking block completed without a loop: incident over. Only reset when
 			// no loop fired anywhere in this message (a clean block right after an
 			// aborted loop in the same message must not clear the incident).
+			// The trailing paragraph (no blank line after it) never participates:
+			// if thinking ended, the loop cannot continue.
 			if (steerRetries > 0 && !loopFiredInMessage && !thinkBufs.get(ev.contentIndex)?.fired) steerRetries = 0;
 			return;
 		}
 		if (ev.type !== "thinking_delta") return;
 		let buf = thinkBufs.get(ev.contentIndex);
 		if (!buf) {
-			buf = { text: "", checked: 0, fired: false };
+			buf = { text: "", consumed: 0, paras: [], candidates: [], fired: false };
 			thinkBufs.set(ev.contentIndex, buf);
 		}
+		if (buf.fired) return;
 		buf.text += ev.delta;
-		if (buf.fired || buf.text.length - buf.checked < THINK_CHECK_EVERY) return;
-		buf.checked = buf.text.length;
-		const unit = detectLoop(buf.text);
-		if (!unit) return;
-		buf.fired = true;
-		loopFiredInMessage = true;
-		stats.thinkingAborts++;
-		const snippet = unit.slice(0, 60);
-		if (!ctx.isIdle()) ctx.abort();
-		if (steerRetries < STEER_RETRIES) {
-			steerRetries++;
-			stats.thinkingSteers++;
-			pi.sendUserMessage(
-				[
-					"doom-loop-guard: thinking looped, repeating this verbatim:",
+		// Completed paragraphs = text between blank lines; feed each to the tracker.
+		for (;;) {
+			const end = buf.text.indexOf("\n\n", buf.consumed);
+			if (end === -1) break;
+			const para = buf.text.slice(buf.consumed, end);
+			buf.consumed = end + 2;
+			const firedAt = trackParagraph(buf, para);
+			if (!firedAt) continue;
+			buf.fired = true;
+			loopFiredInMessage = true;
+			stats.thinkingAborts++;
+			const m = buf.paras.length - 1;
+			const cycle = buf.paras.slice(m - firedAt.period + 1, m + 1).join("\n\n");
+			const snippet = cycle.length > 200 ? cycle.slice(0, 200) + "…" : cycle;
+			if (!ctx.isIdle()) ctx.abort();
+			if (steerRetries < STEER_RETRIES) {
+				steerRetries++;
+				stats.thinkingSteers++;
+				// Queue the retry; deliver it once the aborted run settles (a steer
+				// queued behind an abort is never drained in that run).
+				pendingSteer = [
+					`doom-loop-guard: thinking looped, repeating this ${firedAt.period}-paragraph cycle verbatim:`,
 					`"${snippet}"`,
 					"Stop. Change approach: re-read the file/output, try a different tool, or state the blocker. Do not restate.",
 					makeSteerMarker(),
-				].join(" "),
-				{ deliverAs: "steer" },
-			);
+				].join(" ");
+			}
+			break;
 		}
+	});
+
+	// Deliver queued messages once the aborted run settles: the session is idle
+	// at that point. A pending retry (user message) starts the fresh run; a
+	// pending warning (display entry) is appended without starting a run. A
+	// final abort suppresses any retry: nothing may follow it.
+	pi.on("agent_settled", async (event, ctx) => {
+		if (pendingSteer === undefined && pendingWarning === undefined) return;
+		if (!enabled || !event.aborted) {
+			// Guard disabled since the fire, or the run ended without an abort
+			// (the loop stopped by itself): the queued messages are stale, drop them.
+			pendingSteer = undefined;
+			pendingWarning = undefined;
+			return;
+		}
+		const steer = pendingSteer;
+		const warning = pendingWarning;
+		pendingSteer = undefined;
+		pendingWarning = undefined;
+		if (!ctx.isIdle()) return; // user already started something: stale, drop
+		if (warning !== undefined) {
+			pi.sendMessage({ customType: NUDGE_TYPE, content: warning, display: true }, { triggerTurn: false });
+			return;
+		}
+		if (steer !== undefined) pi.sendUserMessage(steer);
 	});
 
 	// 2. Identical whole messages across messages: nudge, then abort.
@@ -238,24 +314,47 @@ export default function (pi: ExtensionAPI) {
 		if (!enabled || m.role !== "assistant") return;
 		const sig = messageSignature(m);
 		if (sig.length < MSG_MIN_CHARS) {
-			repeatStreak = 0;
+			// Trivial messages neither count as progress nor as repeats; resetting
+			// the streak here would let alternating loops evade escalation.
 			return;
 		}
-		// A repeat is a consecutive identical message (A A A) or an identical
-		// group/cycle (A B A B). A message matching an earlier one with variation
-		// in between (A B A C A D) is NOT a repeat.
-		const repeated =
-			(recentSigs.length > 0 && recentSigs[recentSigs.length - 1] === sig) ||
-			isGroupRepeat(recentSigs);
-		recentSigs.push(sig);
-		while (recentSigs.length > MSG_WINDOW) recentSigs.shift();
-
-		if (!repeated) {
-			repeatStreak = 0;
+		// Repetition tracking mirrors the thinking guard: every following message
+		// must equal its period-step-back predecessor, otherwise the candidate is
+		// dropped — a message that finally escapes the cycle cannot be counted as
+		// a repeat. Escalation counts full repetitions of the repeated cycle:
+		// matched == (N - 1) * period means the cycle has appeared N times.
+		msgSigs.push(sig);
+		const mi = msgSigs.length - 1;
+		let fire: { period: number; level: 1 | 2 | 9 } | undefined;
+		for (let c = msgCandidates.length - 1; c >= 0; c--) {
+			const cand = msgCandidates[c];
+			if (sig === msgSigs[mi - cand.period]) {
+				cand.matched++;
+				const level =
+					cand.matched === (REPEAT_NUDGE_1 - 1) * cand.period ? 1 :
+					cand.matched === (REPEAT_NUDGE_2 - 1) * cand.period ? 2 :
+					cand.matched === (REPEAT_ABORT - 1) * cand.period ? 9 : 0;
+				if (level !== 0 && (!fire || cand.period < fire.period)) fire = { period: cand.period, level };
+			} else {
+				msgCandidates.splice(c, 1);
+			}
+		}
+		if (!fire) {
+			// Anchor: one candidate per distinct distance to an earlier identical
+			// signature (any period; no window limit).
+			for (let i = 0; i < mi; i++) {
+				if (msgSigs[i] !== sig) continue;
+				const period = mi - i;
+				if (!msgCandidates.some((c) => c.period === period)) msgCandidates.push({ period, matched: 1 });
+			}
+			if (msgCandidates.length === 0) {
+				nudge1Done = false;
+				nudge2Done = false;
+			}
 			return;
 		}
-		repeatStreak++;
-		if (repeatStreak === REPEAT_NUDGE_1) {
+		if (fire.level === 1 && !nudge1Done) {
+			nudge1Done = true;
 			stats.nudges++;
 			pi.sendMessage(
 				{
@@ -267,7 +366,8 @@ export default function (pi: ExtensionAPI) {
 				},
 				{ triggerTurn: true },
 			);
-		} else if (repeatStreak === REPEAT_NUDGE_2) {
+		} else if (fire.level === 2 && !nudge2Done) {
+			nudge2Done = true;
 			stats.nudges++;
 			pi.sendMessage(
 				{
@@ -278,17 +378,15 @@ export default function (pi: ExtensionAPI) {
 				},
 				{ triggerTurn: true },
 			);
-		} else if (repeatStreak === REPEAT_ABORT) {
+		} else if (fire.level === 9) {
 			stats.msgAborts++;
 			if (!ctx.isIdle()) ctx.abort();
-			pi.sendMessage(
-				{
-					customType: NUDGE_TYPE,
-					content: "doom-loop-guard: model keeps repeating the same message. Aborted. Rephrase the task or intervene manually.",
-					display: true,
-				},
-				{ triggerTurn: false },
-			);
+			// Final abort: no retry. Queue the warning; deliver it once the run
+			// settles (a message queued behind an abort is never drained in that
+			// run). Any pending retry is dropped — nothing may follow a final abort.
+			pendingSteer = undefined;
+			pendingWarning =
+				"doom-loop-guard: model keeps repeating the same message. Aborted. Rephrase the task or intervene manually.";
 		}
 	});
 
@@ -317,6 +415,8 @@ export default function (pi: ExtensionAPI) {
 					stats.nudges = 0;
 					stats.msgAborts = 0;
 					steerRetries = 0;
+					pendingSteer = undefined;
+					pendingWarning = undefined;
 					thinkBufs = new Map();
 					issuedSteerNonces.clear();
 					resetCrossMessage();
