@@ -48,7 +48,11 @@ if [ -d '.git' ]; then
   done <<< "$git_ignores"
 fi
 
+container_name=${PWD##*/}
+container_name=${container_name//[^a-zA-Z0-9_-]/_}
+
 docker run --rm --interactive \
+  --name "pi_agent-${container_name}" \
   ${tty} \
   -e PI_SKIP_VERSION_CHECK=true \
   -e PI_OFFLINE=true \
