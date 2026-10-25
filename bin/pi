@@ -19,6 +19,25 @@ if [ -t 0 ]; then
   tty="--tty"
 fi
 
+# Global config: git ignored paths excluded from masking, one path per line ('~' or absolute, no bare relative
+# paths), '#' starts a comment. Explicit paths on purpose: a bare relative name could unexpectedly match the same
+# named directory in different projects.
+# Kept outside projects and ~/.pi/agent on purpose: the sandbox must not see or tamper with it.
+pi_visible_file="$HOME/.files/pi/visible"
+pi_visible=()
+if [ -f "$pi_visible_file" ]; then
+  while read -r line; do
+    line=${line%/}
+    [ -z "$line" ] && continue
+    if [[ "$line" == '~'* ]]; then
+      line=${line/#\~/$HOME}
+    elif [[ "$line" != /* ]]; then
+      echo "$0: error: $pi_visible_file: not an absolute or ~ path: $line" >&2
+      exit 1
+    fi
+    pi_visible+=("$line")
+  done <<< "$(sed -E 's/^[[:space:]]*#.*//; s/[[:space:]]+#.*//; s/[[:space:]]*$//' "$pi_visible_file")"
+fi
 git_volume=()
 git_ignores_volumes=()
 if [ -d '.git' ]; then
@@ -37,8 +56,12 @@ if [ -d '.git' ]; then
       grep -v '^"undodir/'
     )
 
-  while IFS= read -r git_ignore; do
-    if [ -f "$git_ignore" ]; then
+  while read -r git_ignore; do
+    git_ignore=${git_ignore%/}
+    if (( ${pi_visible[(Ie)$PWD/$git_ignore]} )); then
+      # Excluded from git ignore masking: no bind mount, inherits workspace mount permissions
+      continue
+    elif [ -f "$git_ignore" ]; then
       # If it's a file, mount an empty file on top of it
       git_ignores_volumes+=("-v" "/dev/null:/workspace/${git_ignore}:ro")
     else

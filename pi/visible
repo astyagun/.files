@@ -1,0 +1,6 @@
+# Git ignored paths that stay visible in the Pi container instead of being masked with empty volumes.
+# One path per line — '~'-prefixed or absolute ('~' allowed, bare relative names are rejected), '#' starts a
+# comment. Trailing '/' optional.
+#
+# Example:
+# ~/Code/my_project/notes/
