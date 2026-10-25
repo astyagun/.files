@@ -1,0 +1,8 @@
+# Custom per-project read-only mounts for the Pi container.
+# '|'-separated fields: project directory, host path, optional mount name. Mounts appear at
+# /mnt/<basename of host path>, or /mnt/<custom name> with the third field. '~' or absolute paths, '#' starts
+# a comment, spaces in paths are fine, '|' must not appear in paths.
+#
+# Examples:
+# ~/Code/my_project | ~/Documents/my project specs
+# ~/Code/my_project | /Volumes/External Data | specs
