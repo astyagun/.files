@@ -84,21 +84,29 @@ git_ignores_volumes=()
 if [ -d '.git' ]; then
   # Read only, so that LLM can't `git push -f` or rebase accidentally
   git_volume=("-v" "$PWD/.git:/workspace/.git:ro")
+  if [ ! -f "$HOME/.gitignore" ]; then
+    echo "$0: error: $HOME/.gitignore not found (mounted as gitignore_global in the container)" >&2
+    exit 1
+  fi
   git_ignores_volumes=("-v" "$HOME/.gitignore:/home/pi/.gitignore_global:ro")
 
   # Mount empty anonymous volumes for each git ignore, so that LLM can't modify or delete these untracked files or
-  # directories
-  local git_ignores=$(
-    git status --ignored --short |\
-      grep '^!! ' |\
-      grep -v '\.DS_Store$' |\
-      cut -d' ' -f2 |\
-      grep -v "^undodir/" |\
-      grep -v '^"undodir/'
-    )
+  # directories. NUL-delimited porcelain output is safe for paths with spaces and special characters;
+  # core.quotePath=false stops git from quoting non-ASCII paths.
+  local git_status
+  if ! git_status=$(git -c core.quotePath=false status --ignored --porcelain -z); then
+    echo "$0: error: git status --ignored failed in $PWD" >&2
+    exit 1
+  fi
 
-  while read -r git_ignore; do
+  for status_entry in "${(@0)git_status}"; do
+    [[ "$status_entry" == '\!\! '* ]] || continue
+    git_ignore=${status_entry:3}
     git_ignore=${git_ignore%/}
+    case "$git_ignore" in
+      # Not worth masking
+      .DS_Store|*/.DS_Store|undodir/*) continue ;;
+    esac
     if (( ${pi_visible[(Ie)$PWD/$git_ignore]} )); then
       # Excluded from git ignore masking: no bind mount, inherits workspace mount permissions
       continue
@@ -109,14 +117,16 @@ if [ -d '.git' ]; then
       # If it's a directory, mount an empty anonymous volume directory on top of it
       git_ignores_volumes+=("-v" "/workspace/$git_ignore")
     fi
-  done <<< "$git_ignores"
+  done
 fi
 
 container_name=${PWD##*/}
 container_name=${container_name//[^a-zA-Z0-9_-]/_}
+# Hash of the full path: different projects can share a directory basename, which would otherwise collide
+container_name="pi_agent-${container_name}-$(print -rn -- "$PWD" | cksum | cut -d' ' -f1)"
 
 docker run --rm --interactive \
-  --name "pi_agent-${container_name}" \
+  --name "$container_name" \
   ${tty} \
   -e PI_SKIP_VERSION_CHECK=true \
   -e PI_OFFLINE=true \
