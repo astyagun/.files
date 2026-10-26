@@ -13,8 +13,9 @@ require "readline"
 require "yaml"
 
 MODEL_NAME = "qwen3.6:35b-a3b-mxfp8"
-# MODEL_NAME = "qwen3.5:9b-nvfp4"
 # MODEL_NAME = "qwen3.8:27b-mxfp8"
+DISABLE_THINKING = true
+OLLAMA_ARGUMENTS = "#{"--think=false" if DISABLE_THINKING} --hidethinking --nowordwrap --format json".freeze
 PROMPT = <<~PROMPT
   Сгенерируй JSON файл основываясь на данных из чека.
   Структура JSON файла:
@@ -51,8 +52,8 @@ file_name_date = File.basename(CHEQUE_FILE_PATH, ".txt").match(/\d{2}\.\d{2}\.\d
 abort "Не найдено даты в имени файла чека" if file_name_date.nil?
 CHEQUE_FILE_NAME_DATE = begin
   Date.parse(file_name_date)
-rescue Date::Error => e
-  abort "Не удалось распознать дату в имени файла чека: #{e.message}"
+rescue Date::Error => error
+  abort "Не удалось распознать дату в имени файла чека: #{error.message}"
 end
 
 OUTPUT_DIRECTORY = File.dirname(CHEQUE_FILE_PATH)
@@ -78,8 +79,7 @@ prompt = format(PROMPT, available_categories:, cheque_content: File.read(CHEQUE_
 
 puts "Бямлю..."
 
-json, stderr_str, status =
-  Open3.capture3("ollama run --hidethinking --think=false --nowordwrap --format json #{MODEL_NAME}", stdin_data: prompt)
+json, stderr_str, status = Open3.capture3("ollama run #{OLLAMA_ARGUMENTS} #{MODEL_NAME}", stdin_data: prompt)
 abort stderr_str unless status.success?
 
 cheque = JSON.parse(json, symbolize_names: true)
