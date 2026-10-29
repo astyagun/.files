@@ -100,7 +100,7 @@ if [ -d '.git' ]; then
   fi
 
   for status_entry in "${(@0)git_status}"; do
-    [[ "$status_entry" == '\!\! '* ]] || continue
+    [[ "$status_entry" == '!! '* ]] || continue
     git_ignore=${status_entry:3}
     git_ignore=${git_ignore%/}
     case "$git_ignore" in
