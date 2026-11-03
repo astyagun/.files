@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+# Convert rich text with links from the clipboard to Markdown on stdout.
+# Usage: pbp-md > note.md   or   :r !pbp-md   in MacVim
+
+require "English"
+
+def bold_span(match)
+  text = match[:text]
+  match[:nl] ? "<h2>#{text}</h2>" : "<strong>#{text}</strong>"
+end
+
+html = `pbp-html`
+abort "No HTML on the clipboard" unless $CHILD_STATUS.success? && !html.empty?
+
+html = html
+  .gsub(%r{<div\b[^>]*>\s*<img\b[^>]*>\s*</div>}m, "")
+  .gsub(%r{<span\b[^>]*class="[^"]*\bbold\b[^"]*"[^>]*>(?<text>.*?)</span>(?<nl>\s*\n)?}m) { |m| bold_span(m) }
+  .gsub(%r{<span\b[^>]*data-lexical-emoji="(?<e>[^"]*)"[^>]*>\s*</span>}) { " #{Regexp.last_match[:e]} " }
+  .gsub(/<img\b[^>]*?alt="(?<a>[^"]*)"[^>]*>/) { Regexp.last_match[:a] }
+  .gsub(/<img\b[^>]*>/, "")
+  .gsub(/\s+(?:style|class|aria-[a-z-]+)="[^"]*"/, "")
+  # preserve literal newlines inside text (pre-wrap) as a marker,
+  # dropping newlines between tags
+  .gsub(/>\s*\n\s*</, "><")
+  .tr("\n", "\uFFFC")
+
+md = IO.popen(["pandoc", "-f", "html", "-t", "gfm", "--wrap=none"], "r+") do |io|
+  io.write html
+  io.close_write
+  io.read
+end
+md = md.gsub(/\uFFFC+/, "\n\n")
+md = md.tr("\u2014", "-")
+md = md.gsub(/\n\n(?=-\s)/, "\n")
+md = md.gsub(/\n{3,}/, "\n\n").gsub(/^ +/, "")
+print md

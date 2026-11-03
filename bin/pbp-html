@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -o pipefail
+# Convert rich text from system pasteboard into HTML on stdout.
+
+osascript -e 'the clipboard as «class HTML»' |
+  perl -pe 's/^«data HTML//; s/»\s*$//; $_ = pack "H*", $_'
