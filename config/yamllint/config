@@ -1,5 +1,6 @@
 ---
 extends: default
+
 rules:
   braces:
     min-spaces-inside: 0
@@ -15,3 +16,8 @@ rules:
   quoted-strings:
     quote-type: double
     required: only-when-needed
+
+ignore:
+  - /group_vars/all/secrets.yml
+  - /roles/web_page_monitor/vars/main.yml
+  - /secrets.yaml
