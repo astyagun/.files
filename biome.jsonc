@@ -1,0 +1,8 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
+  "formatter": {
+    "bracketSpacing": false,
+    "indentStyle": "space",
+    "lineWidth": 120
+  }
+}
