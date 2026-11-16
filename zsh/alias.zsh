@@ -114,6 +114,7 @@ alias brewi-sudo='env -u HOMEBREW_NO_SUDO brew install'
 alias brewu-sudo='env -u HOMEBREW_NO_SUDO brew upgrade'
 alias caski-sudo='env -u HOMEBREW_NO_SUDO brew install --cask'
 alias casku-sudo='env -u HOMEBREW_NO_SUDO brew upgrade --cask'
+alias dfh="df -hI /System/Volumes/Data"
 alias findswp="find ./ -type f -name \".*.sw[op]\""
 alias intel="arch -x86_64"
 alias rmswp="findswp X rm"
