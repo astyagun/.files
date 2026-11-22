@@ -8,8 +8,8 @@
 # Pi containerization docs: https://pi.dev/docs/latest/containerization
 
 workspace_read_only=":ro"
-if [[ $(dirname $PWD) == ~/Code ]] || [[ $PWD == ~/.files ]] || [[ $PWD == ~/.vim ]]; then
-  # Allow writing to FS only in code projects directories
+if [[ $(dirname $PWD) == ~/Code ]] || [[ $PWD == ~/.files ]] || [[ $PWD == ~/.vim ]] || [[ $PWD == ~/Downloads ]]; then
+  # Allow writing to FS only in code projects directories and ~/Downloads 
   workspace_read_only=""
 fi
 
