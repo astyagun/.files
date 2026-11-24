@@ -3,11 +3,15 @@
 ## Agent environment
 
 - Outside: macOS
+  - Network connections may be blocked by Little Snitch
 - Inside:
   - Docker container
   - OS: Debian
   - User name: `pi`
-  - Home directory: `/home/pi/`
+  - `.git` is mounted read-only
+  - Git-ignored files are masked (hidden) in the Pi container
+  - `/workspace` may or may not be writable
+  - For details about how Pi is launched see `astyagun/.files` - `bin/pi` on GitHub
 
 ## User
 
