@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# mdb-fetch — fetch/refresh IMDb dataset files into the cache dir.
+# First run downloads; later runs re-download only when the file changed upstream.
+# Exit 0 when at least one file was fetched/updated, 1 when all were up to date
+# (so `mdb-fetch && mdb-import` only rebuilds on change).
+#
+# Usage: mdb-fetch [name ...]     (default: all core files)
+# Names are IMDb dataset stems, e.g. title.ratings title.basics title.episode
+set -euo pipefail
+
+BASE_URL="https://datasets.imdbws.com"
+
+case "${1-}" in -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;; esac
+
+dest="$HOME/.cache/mdb"
+mkdir -p "$dest"
+
+[[ $# -eq 0 ]] && set -- title.basics title.ratings title.episode
+
+changed=0
+for name in "$@"; do
+  url="$BASE_URL/$name.tsv.gz"
+  out="$dest/$name.tsv.gz"
+  part="$out.part"
+  if [[ -f "$out" ]]; then
+    # Conditional GET: server sends 304 (no body) if unchanged since $out.
+    curl -fsSL --retry 3 -z "$out" -o "$part" "$url"
+    if [[ -s "$part" ]]; then mv "$part" "$out"; echo "updated  $name"; changed=1
+    else rm -f "$part"; echo "ok       $name (up to date)"; fi
+  else
+    curl -fL --retry 3 -o "$part" "$url"
+    mv "$part" "$out"; echo "new      $name"; changed=1
+  fi
+done
+echo "cache    $dest"
+exit "$((1 - changed))"

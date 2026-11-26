@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# mdb-stats — catalog overview: row counts, sizes, source freshness,
+# and the type & genre distributions.
+#
+# Usage: mdb-stats [--format jsonl|table]
+#   --format jsonl|table  default: table on a terminal, jsonl when piped
+#
+# JSONL rows are tagged: {"section":"db"|"source"|"type"|"genre", ...}
+set -euo pipefail
+
+cache="$HOME/.cache/mdb"
+db="$cache/catalog.sqlite"
+
+format=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;;
+    --format) format="$2"; shift 2 ;;
+    *) echo "unknown arg: $1" >&2; exit 64 ;;
+  esac
+done
+case "$format" in jsonl|table) ;; "") [[ -t 1 ]] && format=table || format=jsonl ;; *) echo "bad --format: $format" >&2; exit 65 ;; esac
+
+[[ -f "$db" ]] || { echo "no catalog — run mdb-import first" >&2; exit 66; }
+
+mtime() {  # file mtime as YYYY-MM-DD, portable
+  local e
+  e=$(stat -c %m "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null) || echo "?"
+  date -u -d "@$e" +%F 2>/dev/null || date -u -r "$e" +%F
+}
+
+size() { du -h "$1" 2>/dev/null | cut -f1 | tr -d ' '; }
+
+counts=$(sqlite3 -list "$db" "
+SELECT 'titles=' || COUNT(*) FROM titles
+UNION ALL SELECT 'genres=' || COUNT(*) FROM genres
+UNION ALL SELECT 'series_with_episodes=' || COUNT(*) FROM series_stats;")
+
+if [[ "$format" == table ]]; then
+  printf 'catalog  %s  (%s, built %s)\n' "$db" "$(size "$db")" "$(mtime "$db")"
+  sed 's/^/  /' <<<"$counts"
+  echo
+  echo "sources (fetched)"
+  for f in "$cache"/title.*.tsv.gz; do
+    printf '  %-22s %s\n' "$(basename "$f")" "$(mtime "$f")"
+  done
+  echo
+  echo "types"
+  sqlite3 -noheader -column "$db" "
+  SELECT type, COUNT(*) FROM titles GROUP BY type ORDER BY COUNT(*) DESC;" | sed 's/[[:space:]]*$//;s/^/  /'
+  echo
+  echo "genres"
+  sqlite3 -noheader -column "$db" "
+  SELECT g.name, COUNT(gt.title_id)
+  FROM genres g LEFT JOIN genres_titles gt ON gt.genre_id = g.id
+  GROUP BY g.id ORDER BY g.name;" | sed 's/[[:space:]]*$//;s/^/  /'
+else
+  printf '{"section":"db","path":"%s","size":"%s","built":"%s"}\n' "$db" "$(size "$db")" "$(mtime "$db")"
+  while IFS== read -r k v; do
+    printf '{"section":"count","name":"%s","count":%s}\n' "$k" "$v"
+  done <<<"$counts"
+  for f in "$cache"/title.*.tsv.gz; do
+    printf '{"section":"source","file":"%s","fetched":"%s"}\n' "$(basename "$f")" "$(mtime "$f")"
+  done
+  sqlite3 -list "$db" "
+  SELECT json_object('section','type','name',type,'count',COUNT(*))
+  FROM titles GROUP BY type ORDER BY COUNT(*) DESC;"
+  sqlite3 -list "$db" "
+  SELECT json_object('section','genre','name',g.name,'count',COUNT(gt.title_id))
+  FROM genres g LEFT JOIN genres_titles gt ON gt.genre_id = g.id
+  GROUP BY g.id ORDER BY g.name;"
+fi

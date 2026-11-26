@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# mdb-import — build the SQLite catalog from the fetched IMDb TSVs.
+# Rebuilds from scratch: the DB is a rebuildable cache artifact.
+#
+# Input : ~/.cache/mdb/title.{basics,ratings,episode}.tsv.gz  (see mdb-fetch)
+# Output: ~/.cache/mdb/catalog.sqlite
+set -euo pipefail
+
+case "${1-}" in -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;; esac
+
+cache="$HOME/.cache/mdb"
+db="$cache/catalog.sqlite"
+for f in title.basics title.ratings title.episode; do
+  [[ -f "$cache/$f.tsv.gz" ]] || { echo "missing $f.tsv.gz — run mdb-fetch first" >&2; exit 66; }
+done
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+echo "decompressing…"
+# Strip " from basics: sqlite .import treats " as a quote char and mangles rows.
+gunzip -c "$cache/title.basics.tsv.gz"  | tr -d '"' > "$tmp/basics.tsv"
+gunzip -c "$cache/title.ratings.tsv.gz" > "$tmp/ratings.tsv"
+gunzip -c "$cache/title.episode.tsv.gz" > "$tmp/episode.tsv"
+
+echo "building $db"
+rm -f "$db"
+
+# IMDb TSV: tab-separated, \N = null, genres comma-separated.
+# Keep movies + series; episodes become per-series aggregates.
+sqlite3 "$db" <<SQL
+.output /dev/null
+PRAGMA journal_mode=OFF;
+.output stdout
+PRAGMA synchronous=OFF;
+
+CREATE TABLE titles(
+  tconst          TEXT PRIMARY KEY,
+  type            TEXT NOT NULL,
+  primary_title   TEXT,
+  original_title  TEXT,
+  is_adult        INTEGER,
+  start_year      INTEGER,
+  end_year        INTEGER,
+  runtime_minutes INTEGER,
+  avg_rating      REAL,
+  num_votes       INTEGER
+);
+CREATE TABLE genres(
+  id   INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+CREATE TABLE genres_titles(
+  genre_id INTEGER NOT NULL,
+  title_id TEXT    NOT NULL
+);
+CREATE TABLE series_stats(
+  parent_tconst TEXT PRIMARY KEY,
+  seasons       INTEGER,
+  episodes      INTEGER,
+  episodes_per_season      -- JSON object, e.g. {"1":10,"2":10}
+)
+;
+
+CREATE TABLE raw_basics(tconst,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear,runtimeMinutes,genres);
+CREATE TABLE raw_ratings(tconst,averageRating,numVotes);
+CREATE TABLE raw_episode(tconst,parentTconst,seasonNumber,episodeNumber);
+
+.mode list
+.separator "\t"
+.import --skip 1 $tmp/basics.tsv  raw_basics
+.import --skip 1 $tmp/ratings.tsv raw_ratings
+.import --skip 1 $tmp/episode.tsv raw_episode
+
+INSERT INTO titles
+  SELECT b.tconst, b.titleType, b.primaryTitle, b.originalTitle,
+         NULLIF(b.isAdult,'\N'), NULLIF(b.startYear,'\N'), NULLIF(b.endYear,'\N'),
+         NULLIF(b.runtimeMinutes,'\N'), NULLIF(r.averageRating,'\N'), NULLIF(r.numVotes,'\N')
+  FROM raw_basics b LEFT JOIN raw_ratings r USING (tconst)
+  WHERE b.titleType IN ('movie','tvSeries','tvMiniSeries','tvMovie');
+
+CREATE TEMP TABLE kept AS
+  SELECT tconst, genres FROM raw_basics
+  WHERE titleType IN ('movie','tvSeries','tvMiniSeries','tvMovie') AND genres <> '\N';
+
+INSERT INTO genres(name)
+  SELECT DISTINCT value FROM kept, json_each('["' || replace(genres, ',', '","') || '"]');
+
+INSERT INTO genres_titles(genre_id, title_id)
+  SELECT g.id, k.tconst
+  FROM kept k, json_each('["' || replace(k.genres, ',', '","') || '"]') je, genres g
+  WHERE g.name = je.value;
+
+INSERT INTO series_stats
+  WITH per_season AS (
+    SELECT parentTconst, NULLIF(NULLIF(seasonNumber,'\N'),'') AS season, COUNT(*) AS eps
+    FROM raw_episode
+    WHERE parentTconst IN (SELECT tconst FROM titles)
+    GROUP BY parentTconst, season
+  )
+  SELECT parentTconst, COUNT(season), SUM(eps),
+         json_group_object(season, eps) FILTER (WHERE season IS NOT NULL)
+  FROM per_season
+  GROUP BY parentTconst;
+
+DROP TABLE raw_basics; DROP TABLE raw_ratings; DROP TABLE raw_episode;
+
+CREATE INDEX idx_titles_type   ON titles(type);
+CREATE INDEX idx_titles_year   ON titles(start_year);
+CREATE INDEX idx_titles_rating ON titles(num_votes, avg_rating);
+CREATE INDEX idx_gt_title      ON genres_titles(title_id);
+CREATE INDEX idx_gt_genre      ON genres_titles(genre_id);
+VACUUM;
+SQL
+
+echo "done"
+sqlite3 "$db" "
+SELECT 'titles',        COUNT(*) FROM titles
+UNION ALL SELECT 'genres',        COUNT(*) FROM genres
+UNION ALL SELECT 'genres_titles', COUNT(*) FROM genres_titles
+UNION ALL SELECT 'series_stats',  COUNT(*) FROM series_stats;"

@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# mdb-open — open a title's page in the browser by IMDb ID (tconst).
+#
+# Usage: mdb-open [-p|--print] <tconst> [service]     (default service: imdb)
+#   imdb           imdb.com/title/<tconst>              (direct)
+#   wikipedia      English Wikipedia article            (via Wikidata)
+#   tmdb           themoviedb.org                       (via Wikidata)
+#   kinopoisk      kinopoisk.ru film page               (via Wikidata)
+#   rottentomatoes rottentomatoes.com                   (via Wikidata)
+#   anilist        anilist.co                           (via Wikidata)
+#   shikimori      shikimori page          (via Wikidata MAL id + anilinks.json)
+#   anilibria      aniliberty.top release  (via Wikidata MAL id + anilinks.json)
+#
+# -p/--print: print the URL instead of opening it.
+# shikimori/anilibria need: mdb-fetch-anilinks (builds anilinks.json) and a
+# title that has an anime cross-id on Wikidata.
+set -euo pipefail
+
+print_only=0
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;;
+    -p|--print) print_only=1; shift ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+set -- "${args[@]+"${args[@]}"}"
+[[ $# -ge 1 && $# -le 2 ]] || { echo "usage: mdb-open [-p] <tconst> [service]" >&2; exit 64; }
+
+id="${1:-}"; service="${2:-imdb}"
+[[ "$id" =~ ^tt[0-9]+$ ]] || { echo "bad tconst: $id" >&2; exit 65; }
+case "$service" in
+  imdb|wikipedia|tmdb|kinopoisk|rottentomatoes|anilist|shikimori|anilibria) ;;
+  *) echo "bad service: $service" >&2; exit 65 ;;
+esac
+
+url="https://www.imdb.com/title/$id/"
+
+if [[ "$service" != imdb ]]; then
+  # One Wikidata query: tconst -> all cross-ids we know how to turn into URLs.
+  resp=$(curl -fsSL -G -A "mdb-open/1.0" "https://query.wikidata.org/sparql" \
+    --data-urlencode "query=SELECT ?wiki ?mal ?tmdb ?tmdbTv ?kp ?rt ?anilist WHERE {
+        VALUES ?imdb {\"$id\"} ?item wdt:P345 ?imdb.
+        OPTIONAL { ?wiki schema:about ?item ; schema:isPartOf <https://en.wikipedia.org/> }
+        OPTIONAL { ?item wdt:P4086 ?mal }
+        OPTIONAL { ?item wdt:P4947 ?tmdb }
+        OPTIONAL { ?item wdt:P4983 ?tmdbTv }
+        OPTIONAL { ?item wdt:P2603 ?kp }
+        OPTIONAL { ?item wdt:P1258 ?rt }
+        OPTIONAL { ?item wdt:P8729 ?anilist }
+      }" \
+    --data-urlencode 'format=json')
+  get() { jq -r ".results.bindings[] | .$1.value? // empty" <<<"$resp" | head -n1; }
+  wiki=$(get wiki); mal=$(get mal); tmdb=$(get tmdb); tmdb_tv=$(get tmdbTv)
+  kp=$(get kp); rt=$(get rt); anilist=$(get anilist)
+
+  case "$service" in
+    wikipedia) [[ -n "$wiki" ]] || { echo "no Wikipedia article for $id" >&2; exit 1; }
+               url="$wiki" ;;
+    tmdb)      if   [[ -n "$tmdb" ]];    then url="https://www.themoviedb.org/movie/$tmdb"
+               elif [[ -n "$tmdb_tv" ]]; then url="https://www.themoviedb.org/tv/$tmdb_tv"
+               else echo "no TMDB id on Wikidata for $id" >&2; exit 1; fi ;;
+    kinopoisk) [[ -n "$kp" ]] || { echo "no Kinopoisk id on Wikidata for $id" >&2; exit 1; }
+               url="https://www.kinopoisk.ru/film/$kp/" ;;
+    rottentomatoes) [[ -n "$rt" ]] || { echo "no Rotten Tomatoes id on Wikidata for $id" >&2; exit 1; }
+               # Wikidata stores either a bare slug or "m/slug" / "tv/slug"
+               case "$rt" in m/*|tv/*) url="https://www.rottentomatoes.com/$rt" ;; *) url="https://www.rottentomatoes.com/m/$rt" ;; esac ;;
+    anilist)   [[ -n "$anilist" ]] || { echo "no AniList id on Wikidata for $id" >&2; exit 1; }
+               url="https://anilist.co/anime/$anilist" ;;
+    shikimori|anilibria)
+      [[ -n "$mal" ]] || { echo "no MAL id on Wikidata for $id" >&2; exit 1; }
+      links="$HOME/.cache/mdb/anilinks.json"
+      [[ -f "$links" ]] || { echo "no anilinks.json — run mdb-fetch-anilinks first" >&2; exit 66; }
+      if [[ "$service" == shikimori ]]; then
+        url=$(jq -r --arg m "$mal" '.[$m].shikimori // empty' "$links")
+      else
+        alias=$(jq -r --arg m "$mal" '.[$m].anilibria // empty' "$links")
+        [[ -n "$alias" ]] || { echo "not in AniLiberty catalog (MAL $mal)" >&2; exit 1; }
+        url="https://aniliberty.top/anime/releases/$alias"
+      fi
+      [[ -n "$url" ]] || { echo "not in AniLiberty catalog (MAL $mal)" >&2; exit 1; } ;;
+  esac
+fi
+
+if [[ "$print_only" == 1 ]]; then
+  echo "$url"
+else
+  open "$url"
+fi

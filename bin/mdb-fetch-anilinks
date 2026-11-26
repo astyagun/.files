@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# mdb-fetch-anilinks — fetch the AniLiberty catalog into a MAL ->
+# {anilibria, shikimori} crosswalk (keyless API).
+#
+# Usage: mdb-fetch-anilinks
+# Output: ~/.cache/mdb/anilinks.json  (rebuildable cache artifact)
+#
+# Incremental: with an existing anilinks.json, walks the catalog sorted by
+# most-recently-updated and stops at the first page containing no new ids.
+#
+# Used by mdb-open to resolve shikimori/anilibria URLs from a tconst
+# (tconst -> MAL id comes from Wikidata).
+set -euo pipefail
+
+api="https://anilibria.top/api/v1/anime/catalog/releases"
+out="$HOME/.cache/mdb/anilinks.json"
+
+case "${1-}" in -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;; esac
+
+command -v jq >/dev/null || { echo "jq is required" >&2; exit 66; }
+mkdir -p "$(dirname "$out")"
+
+existing='{}'
+[[ -f "$out" ]] && existing=$(cat "$out")
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+echo "$existing" > "$tmp/known.json"
+: > "$tmp/new"
+
+page=1
+while :; do
+  resp=$(curl -fsSL --retry 3 -A "mdb-fetch-anilinks/1.0" -H "Accept: application/json" \
+    "$api?limit=50&page=$page&f%5Bsorting%5D=FRESH_AT_DESC")
+  # rows not already known (known.json grows as we collect)
+  echo "$resp" | jq -c --slurpfile known "$tmp/known.json" '
+      .data[] | select(.mal != null)
+      | {key: (.mal.id | tostring),
+         value: {anilibria: .alias, shikimori: (.shikimori.url // null)}}
+      | select(($known[0][.key] // null) == null)' > "$tmp/page"
+  page_new=$(grep -c . "$tmp/page" || true)
+  cat "$tmp/page" >> "$tmp/new"
+  jq -s 'add' "$tmp/known.json" "$tmp/page" > "$tmp/known.json.part" && mv "$tmp/known.json.part" "$tmp/known.json"
+  total=$(echo "$resp" | jq -r '.meta.pagination.total_pages')
+  # incremental mode: a full page of known releases ends the walk
+  [[ "$existing" != "{}" && "$page_new" -eq 0 ]] && break
+  [[ "$page" -ge "$total" ]] && break
+  ((page++)) || true
+  sleep 0.3
+done
+
+jq -s 'add' <(echo "$existing") "$tmp/new" > "$out.part" && mv "$out.part" "$out"
+echo "$(jq 'length' "$out") links -> $out"
