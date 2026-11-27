@@ -18,14 +18,13 @@
 #   --order desc|asc             default: desc
 #   --limit N                    default: 20
 #   --offset N                   default: 0
-#   --fields a,b,c               subset of: tconst,type,primary_title,original_title,
-#                                start_year,end_year,runtime_minutes,avg_rating,
-#                                num_votes,genres,series_stats
+#   --fields a,b,c               subset of: tconst,type,is_adult,primary_title,
+#                                original_title,start_year,end_year,
+#                                runtime_minutes,avg_rating,num_votes,
+#                                genres,series_stats
 #   --format jsonl|table         default: table on a terminal, jsonl when piped
 set -euo pipefail
-
-db="$HOME/.cache/mdb/catalog.sqlite"
-[[ -f "$db" ]] || { echo "no catalog — run mdb-import first" >&2; exit 66; }
+source "$(dirname "$0")/_mdb_common"
 
 types=""
 declare -a genre_groups=()
@@ -33,25 +32,23 @@ year_exact="" year_from="" year_to="" min_rating="" min_votes="" title=""
 sort=rating order=desc limit=20 offset=0
 fields="" format=""
 
-sq() { printf "%s" "${1//\'/\'\'}"; }   # escape single quotes for SQL
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;;
-    --type)       types="${types:+$types,}$2"; shift 2 ;;
-    --genre)      genre_groups+=("$2"); shift 2 ;;
-    --year)       year_exact="$2"; shift 2 ;;
-    --year-from) year_from="$2"; shift 2 ;;
-    --year-to)    year_to="$2"; shift 2 ;;
-    --min-rating) min_rating="$2"; shift 2 ;;
-    --min-votes)  min_votes="$2"; shift 2 ;;
-    --title)      title="$2"; shift 2 ;;
-    --sort)       sort="$2"; shift 2 ;;
-    --order)      order="$2"; shift 2 ;;
-    --limit)      limit="$2"; shift 2 ;;
-    --offset)     offset="$2"; shift 2 ;;
-    --fields)     fields="$2"; shift 2 ;;
-    --format)     format="$2"; shift 2 ;;
+    -h|--help) mdb_help; exit 0 ;;
+    --type)       types="${types:+$types,}$(mdb_val "$1" "${2-}")"; shift 2 ;;
+    --genre)      genre_groups+=("$(mdb_val "$1" "${2-}")"); shift 2 ;;
+    --year)       year_exact=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --year-from)  year_from=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --year-to)    year_to=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --min-rating) min_rating=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --min-votes)  min_votes=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --title)      title=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --sort)       sort=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --order)      order=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --limit)      limit=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --offset)     offset=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --fields)     fields=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --format)     format=$(mdb_val "$1" "${2-}"); shift 2 ;;
     *) echo "unknown arg: $1" >&2; exit 64 ;;
   esac
 done
@@ -63,8 +60,8 @@ done
 [[ -z "$min_rating" || "$min_rating" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "not a number: $min_rating" >&2; exit 65; }
 case "$sort"  in rating) sort=avg_rating;; votes) sort=num_votes;; year) sort=start_year;; *) echo "bad --sort: $sort" >&2; exit 65;; esac
 case "$order" in desc|asc) ;; *) echo "bad --order: $order" >&2; exit 65;; esac
-if [[ -z "$format" ]]; then [[ -t 1 ]] && format=table || format=jsonl; fi
-case "$format" in jsonl|table) ;; *) echo "bad --format: $format" >&2; exit 65;; esac
+mdb_require_catalog
+mdb_pick_format
 
 # Field selection: name -> JSON fragment / table column expression.
 if [[ -z "$fields" ]]; then
@@ -74,36 +71,8 @@ if [[ -z "$fields" ]]; then
     fields=tconst,type,primary_title,original_title,start_year,end_year,runtime_minutes,avg_rating,num_votes,genres,series_stats
   fi
 fi
-json_args="" table_cols=""
 IFS=',' read -ra fs <<< "$fields"
-for f in "${fs[@]}"; do
-  case "$f" in
-    tconst|type|is_adult|primary_title|original_title|start_year|end_year|runtime_minutes|avg_rating|num_votes)
-      json_args+="'$f', t.$f, "
-      table_cols+="t.$f AS $f, " ;;
-    genres)
-      json_args+="'genres', (SELECT json_group_array(g.name)
-                       FROM genres_titles gt JOIN genres g ON g.id = gt.genre_id
-                      WHERE gt.title_id = t.tconst), "
-      table_cols+="(SELECT group_concat(g.name, ', ')
-                     FROM genres_titles gt JOIN genres g ON g.id = gt.genre_id
-                    WHERE gt.title_id = t.tconst) AS genres, " ;;
-    series_stats)
-      json_args+="'series_stats', (SELECT json_object('seasons', seasons, 'episodes', episodes, 'episodes_per_season', json(episodes_per_season))
-                     FROM series_stats WHERE parent_tconst = t.tconst), "
-      table_cols+="COALESCE(
-        (SELECT s.seasons ||
-                CASE WHEN min(j.value) = max(j.value) THEN 'x' || min(j.value)
-                     ELSE 'x(' || min(j.value) || '..' || max(j.value) || ')' END
-           FROM series_stats s, json_each(s.episodes_per_season) j
-          WHERE parent_tconst = t.tconst),
-        (SELECT seasons || 'S ' || episodes || 'E' FROM series_stats WHERE parent_tconst = t.tconst)
-      ) AS series_stats, " ;;
-    *) echo "bad --field: $f" >&2; exit 65 ;;
-  esac
-done
-json_args=${json_args%, }
-table_cols=${table_cols%, }
+mdb_build_fields "${fs[@]}"
 
 where=()
 
@@ -121,13 +90,17 @@ fi
 # groups are OR-ed together.
 genre_cond=""
 for group in "${genre_groups[@]+"${genre_groups[@]}"}"; do
-  in_list="" n=0
+  in_list=""
   IFS=',' read -ra gs <<< "$group"
-  for g in "${gs[@]}"; do in_list+="'$(sq "$g")',"; ((++n || true)); done
+  for i in "${!gs[@]}"; do gs[i]=$(trim "${gs[i]}"); done   # "Horror, Comedy" must match
+  for g in "${gs[@]}"; do in_list+="'$(sq "$g")',"; done
+  # case-folded distinct genres; an all-empty group (e.g. ",") is a usage error
+  n=$(printf '%s\n' "${gs[@]}" | tr '[:upper:]' '[:lower:]' | sort -u | grep -c . || true)
+  [[ "$n" -gt 0 ]] || { echo "empty --genre group: $group" >&2; exit 65; }
   cond="(SELECT 1 FROM genres_titles gt JOIN genres g ON g.id = gt.genre_id
            WHERE gt.title_id = t.tconst
              AND g.name COLLATE NOCASE IN (${in_list%,})
-           GROUP BY gt.title_id HAVING COUNT(DISTINCT g.name) = $n)"
+           GROUP BY gt.title_id HAVING COUNT(DISTINCT g.name COLLATE NOCASE) = $n)"
   genre_cond+="${genre_cond:+ OR }$cond"
 done
 [[ -n "$genre_cond" ]] && where+=("($genre_cond)")
@@ -143,7 +116,7 @@ ongoing_end="(CASE WHEN t.type IN ('tvSeries','tvMiniSeries') THEN COALESCE(t.en
 
 if [[ -n "$title" ]]; then
   esc=${title//\\/\\\\}; esc=${esc//\%/\\%}; esc=${esc//_/\\_}
-  where+=("t.primary_title LIKE '%$(sq "$esc")%' ESCAPE '\\' COLLATE NOCASE")
+  where+=("t.primary_title LIKE '%$(sq "$esc")%' ESCAPE '\\'")
 fi
 
 sql_where=""
@@ -154,15 +127,15 @@ if [[ ${#where[@]} -gt 0 ]]; then
 fi
 
 if [[ "$format" == table ]]; then
-  sqlite3 -header -column "$db" "
-SELECT $table_cols
+  sqlite3 -header -column "$MDB_DB" "
+SELECT $MDB_TABLE_COLS
 FROM titles t
 $sql_where
 ORDER BY $sort $order, t.tconst
 LIMIT $limit OFFSET $offset;" | sed 's/[[:space:]]*$//'
 else
-  sqlite3 -list "$db" "
-SELECT json_object($json_args)
+  sqlite3 -list "$MDB_DB" "
+SELECT json_object($MDB_JSON_ARGS)
 FROM titles t
 $sql_where
 ORDER BY $sort $order, t.tconst

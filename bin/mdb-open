@@ -2,25 +2,24 @@
 # mdb-open — open a title's page in the browser by IMDb ID (tconst).
 #
 # Usage: mdb-open [-p|--print] <tconst> [service]     (default service: imdb)
-#   imdb           imdb.com/title/<tconst>              (direct)
-#   wikipedia      English Wikipedia article            (via Wikidata)
-#   tmdb           themoviedb.org                       (via Wikidata)
-#   kinopoisk      kinopoisk.ru film page               (via Wikidata)
-#   rottentomatoes rottentomatoes.com                   (via Wikidata)
-#   anilist        anilist.co                           (via Wikidata)
-#   shikimori      shikimori page          (via Wikidata MAL id + anilinks.json)
-#   anilibria      aniliberty.top release  (via Wikidata MAL id + anilinks.json)
+#   imdb           imdb.com/title/<tconst>   (direct)
+#   wikipedia      English Wikipedia article (via Wikidata)
+#   tmdb           themoviedb.org            (via Wikidata)
+#   kinopoisk      kinopoisk.ru              (via Wikidata)
+#   rottentomatoes rottentomatoes.com        (via Wikidata)
+#   anilist        anilist.co                (via Wikidata)
 #
 # -p/--print: print the URL instead of opening it.
-# shikimori/anilibria need: mdb-fetch-anilinks (builds anilinks.json) and a
-# title that has an anime cross-id on Wikidata.
+# macOS only: opening uses `open` — deliberately no xdg-open fallback.
+# Non-imdb services need the title to have the cross-id on Wikidata.
 set -euo pipefail
+source "$(dirname "$0")/_mdb_common"
 
 print_only=0
 args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;;
+    -h|--help) mdb_help; exit 0 ;;
     -p|--print) print_only=1; shift ;;
     *) args+=("$1"); shift ;;
   esac
@@ -31,7 +30,7 @@ set -- "${args[@]+"${args[@]}"}"
 id="${1:-}"; service="${2:-imdb}"
 [[ "$id" =~ ^tt[0-9]+$ ]] || { echo "bad tconst: $id" >&2; exit 65; }
 case "$service" in
-  imdb|wikipedia|tmdb|kinopoisk|rottentomatoes|anilist|shikimori|anilibria) ;;
+  imdb|wikipedia|tmdb|kinopoisk|rottentomatoes|anilist) ;;
   *) echo "bad service: $service" >&2; exit 65 ;;
 esac
 
@@ -39,11 +38,12 @@ url="https://www.imdb.com/title/$id/"
 
 if [[ "$service" != imdb ]]; then
   # One Wikidata query: tconst -> all cross-ids we know how to turn into URLs.
-  resp=$(curl -fsSL -G -A "mdb-open/1.0" "https://query.wikidata.org/sparql" \
-    --data-urlencode "query=SELECT ?wiki ?mal ?tmdb ?tmdbTv ?kp ?rt ?anilist WHERE {
+  # P2603/P8729 are type-scoped properties (Kinopoisk *film* / AniList *anime*),
+  # so the /film/ and /anime/ URL kinds below match what the ids can point to.
+  resp=$(curl -fsSL -m 30 -G -A "mdb-open/1.0" "https://query.wikidata.org/sparql" \
+    --data-urlencode "query=SELECT ?wiki ?tmdb ?tmdbTv ?kp ?rt ?anilist WHERE {
         VALUES ?imdb {\"$id\"} ?item wdt:P345 ?imdb.
         OPTIONAL { ?wiki schema:about ?item ; schema:isPartOf <https://en.wikipedia.org/> }
-        OPTIONAL { ?item wdt:P4086 ?mal }
         OPTIONAL { ?item wdt:P4947 ?tmdb }
         OPTIONAL { ?item wdt:P4983 ?tmdbTv }
         OPTIONAL { ?item wdt:P2603 ?kp }
@@ -51,12 +51,21 @@ if [[ "$service" != imdb ]]; then
         OPTIONAL { ?item wdt:P8729 ?anilist }
       }" \
     --data-urlencode 'format=json')
-  get() { jq -r ".results.bindings[] | .$1.value? // empty" <<<"$resp" | head -n1; }
-  wiki=$(get wiki); mal=$(get mal); tmdb=$(get tmdb); tmdb_tv=$(get tmdbTv)
+  # P345 can match several items: read every variable from the first row only,
+  # so ids from different items are never mixed into one URL set.
+  get() { jq -r ".results.bindings[0].$1.value? // empty" <<<"$resp"; }
+  wiki=$(get wiki); tmdb=$(get tmdb); tmdb_tv=$(get tmdbTv)
   kp=$(get kp); rt=$(get rt); anilist=$(get anilist)
+  # Wikidata is crowd-edited: validate every id before building URLs from it.
+  for pair in tmdb:"$tmdb" tmdbTv:"$tmdb_tv" kp:"$kp" anilist:"$anilist"; do
+    v=${pair#*:}
+    [[ -z "$v" || "$v" =~ ^[0-9]+$ ]] || { echo "bad ${pair%%:*} id from Wikidata: $v" >&2; exit 1; }
+  done
+  [[ -z "$rt" || "$rt" =~ ^[A-Za-z0-9_/-]+$ ]] || { echo "bad rottentomatoes id from Wikidata: $rt" >&2; exit 1; }
 
   case "$service" in
     wikipedia) [[ -n "$wiki" ]] || { echo "no Wikipedia article for $id" >&2; exit 1; }
+               [[ "$wiki" =~ ^https://en\.wikipedia\.org/wiki/ ]] || { echo "unexpected Wikipedia URL: $wiki" >&2; exit 1; }
                url="$wiki" ;;
     tmdb)      if   [[ -n "$tmdb" ]];    then url="https://www.themoviedb.org/movie/$tmdb"
                elif [[ -n "$tmdb_tv" ]]; then url="https://www.themoviedb.org/tv/$tmdb_tv"
@@ -68,18 +77,6 @@ if [[ "$service" != imdb ]]; then
                case "$rt" in m/*|tv/*) url="https://www.rottentomatoes.com/$rt" ;; *) url="https://www.rottentomatoes.com/m/$rt" ;; esac ;;
     anilist)   [[ -n "$anilist" ]] || { echo "no AniList id on Wikidata for $id" >&2; exit 1; }
                url="https://anilist.co/anime/$anilist" ;;
-    shikimori|anilibria)
-      [[ -n "$mal" ]] || { echo "no MAL id on Wikidata for $id" >&2; exit 1; }
-      links="$HOME/.cache/mdb/anilinks.json"
-      [[ -f "$links" ]] || { echo "no anilinks.json — run mdb-fetch-anilinks first" >&2; exit 66; }
-      if [[ "$service" == shikimori ]]; then
-        url=$(jq -r --arg m "$mal" '.[$m].shikimori // empty' "$links")
-      else
-        alias=$(jq -r --arg m "$mal" '.[$m].anilibria // empty' "$links")
-        [[ -n "$alias" ]] || { echo "not in AniLiberty catalog (MAL $mal)" >&2; exit 1; }
-        url="https://aniliberty.top/anime/releases/$alias"
-      fi
-      [[ -n "$url" ]] || { echo "not in AniLiberty catalog (MAL $mal)" >&2; exit 1; } ;;
   esac
 fi
 

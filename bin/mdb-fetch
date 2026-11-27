@@ -7,28 +7,38 @@
 # Usage: mdb-fetch [name ...]     (default: all core files)
 # Names are IMDb dataset stems, e.g. title.ratings title.basics title.episode
 set -euo pipefail
+source "$(dirname "$0")/_mdb_common"
 
 BASE_URL="https://datasets.imdbws.com"
 
-case "${1-}" in -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;; esac
+case "${1-}" in -h|--help) mdb_help; exit 0 ;; esac
 
-dest="$HOME/.cache/mdb"
+dest="$MDB_CACHE"
 mkdir -p "$dest"
 
 [[ $# -eq 0 ]] && set -- title.basics title.ratings title.episode
 
 changed=0
 for name in "$@"; do
+  [[ "$name" =~ ^title\.[a-z]+$ ]] || { echo "invalid dataset name: $name" >&2; exit 65; }
   url="$BASE_URL/$name.tsv.gz"
   out="$dest/$name.tsv.gz"
   part="$out.part"
   if [[ -f "$out" ]]; then
     # Conditional GET: server sends 304 (no body) if unchanged since $out.
-    curl -fsSL --retry 3 -z "$out" -o "$part" "$url"
+    # -z derives If-Modified-Since from the local mtime: a file with a future
+    # mtime (odd clock, restored copy) pins us to 304 until upstream catches
+    # up. Recovery: touch "$out" (or delete it) to force a re-check.
+    # curl leaves the -o target untouched on 304, so a .part left behind by an
+    # interrupted run would be promoted over the good file — clear it first.
+    rm -f "$part"
+    curl -fsSL --retry 3 --retry-all-errors --speed-limit 1024 --speed-time 60 -z "$out" -o "$part" "$url"
     if [[ -s "$part" ]]; then mv "$part" "$out"; echo "updated  $name"; changed=1
     else rm -f "$part"; echo "ok       $name (up to date)"; fi
   else
-    curl -fL --retry 3 -o "$part" "$url"
+    curl -fsSL --retry 3 --retry-all-errors --speed-limit 1024 --speed-time 60 -o "$part" "$url"
+    # a 200 with empty body must not poison the cache (and then look "up to date")
+    [[ -s "$part" ]] || { rm -f "$part"; echo "empty response for $name" >&2; exit 65; }
     mv "$part" "$out"; echo "new      $name"; changed=1
   fi
 done

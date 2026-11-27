@@ -1,0 +1,75 @@
+# _mdb_common — shared definitions for the mdb-* family. Source, don't run.
+#   source "$(dirname "$0")/_mdb_common"
+# Definitions only: no side effects, no set, no execution.
+
+MDB_CACHE="$HOME/.cache/mdb"
+MDB_DB="$MDB_CACHE/catalog.sqlite"
+
+mdb_help() { awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; }
+
+mdb_require_catalog() {
+  [[ -f "$MDB_DB" ]] || { echo "no catalog — run mdb-import first" >&2; exit 66; }
+}
+
+# Resolve the global $format: table on a terminal, jsonl when piped.
+mdb_pick_format() {
+  case "$format" in
+    jsonl|table) ;;
+    "") if [[ -t 1 ]]; then format=table; else format=jsonl; fi ;;
+    *) echo "bad --format: $format" >&2; exit 65 ;;
+  esac
+}
+
+sq() { printf "%s" "${1//\'/\'\'}"; }   # escape single quotes for SQL
+
+trim() {  # strip surrounding whitespace (bash 3.2 compatible)
+  local v="$1"
+  v="${v#"${v%%[![:space:]]*}"}"
+  v="${v%"${v##*[![:space:]]}"}"
+  printf '%s' "$v"
+}
+
+# Flag value guard: mdb_x="$(mdb_val "$1" "${2-}")" — a trailing flag (or an
+# empty value) is a usage error instead of a set -u crash. Works under set -e:
+# the failed substitution aborts the assignment in the caller.
+mdb_val() {
+  [[ -n "${2-}" ]] || { echo "$1 requires a value" >&2; exit 64; }
+  printf '%s' "$2"
+}
+
+# mdb_build_fields field... — translate --fields names into SQL fragments.
+# Sets MDB_JSON_ARGS (json_object args) and MDB_TABLE_COLS (column aliases).
+# Rows are selected FROM titles t.
+mdb_build_fields() {
+  local f
+  [[ $# -gt 0 ]] || { echo "empty --fields" >&2; exit 65; }
+  MDB_JSON_ARGS="" MDB_TABLE_COLS=""
+  for f in "$@"; do
+    case "$f" in
+      tconst|type|is_adult|primary_title|original_title|start_year|end_year|runtime_minutes|avg_rating|num_votes)
+        MDB_JSON_ARGS+="'$f', t.$f, "
+        MDB_TABLE_COLS+="t.$f AS $f, " ;;
+      genres)
+        MDB_JSON_ARGS+="'genres', (SELECT json_group_array(g.name)
+                         FROM genres_titles gt JOIN genres g ON g.id = gt.genre_id
+                        WHERE gt.title_id = t.tconst), "
+        MDB_TABLE_COLS+="(SELECT group_concat(g.name, ', ')
+                       FROM genres_titles gt JOIN genres g ON g.id = gt.genre_id
+                      WHERE gt.title_id = t.tconst) AS genres, " ;;
+      series_stats)
+        MDB_JSON_ARGS+="'series_stats', (SELECT json_object('seasons', seasons, 'episodes', episodes, 'episodes_per_season', json(episodes_per_season))
+                       FROM series_stats WHERE parent_tconst = t.tconst), "
+        MDB_TABLE_COLS+="COALESCE(
+          (SELECT s.seasons ||
+                  CASE WHEN min(j.value) = max(j.value) THEN 'x' || min(j.value)
+                       ELSE 'x(' || min(j.value) || '..' || max(j.value) || ')' END
+             FROM series_stats s, json_each(s.episodes_per_season) j
+            WHERE parent_tconst = t.tconst),
+          (SELECT seasons || 'S ' || episodes || 'E' FROM series_stats WHERE parent_tconst = t.tconst)
+        ) AS series_stats, " ;;
+      *) echo "bad --field: $f" >&2; exit 65 ;;
+    esac
+  done
+  MDB_JSON_ARGS=${MDB_JSON_ARGS%, }
+  MDB_TABLE_COLS=${MDB_TABLE_COLS%, }
+}

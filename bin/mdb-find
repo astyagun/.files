@@ -3,71 +3,45 @@
 # Rails-style find: exactly one record, error if not found.
 #
 # Usage: mdb-find tt0111161 [--fields a,b,c] [--format jsonl|table]
-#   --fields a,b,c       subset of: tconst,type,primary_title,original_title,
-#                        start_year,end_year,runtime_minutes,avg_rating,
-#                        num_votes,genres,series_stats
+#   --fields a,b,c       subset of: tconst,type,is_adult,primary_title,
+#                        original_title,start_year,end_year,runtime_minutes,
+#                        avg_rating,num_votes,genres,series_stats
 #   --format jsonl|table default: table on a terminal, jsonl when piped
 set -euo pipefail
-
-db="$HOME/.cache/mdb/catalog.sqlite"
+source "$(dirname "$0")/_mdb_common"
 
 id="" fields="" format=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;;
-    --fields) fields="$2"; shift 2 ;;
-    --format) format="$2"; shift 2 ;;
+    -h|--help) mdb_help; exit 0 ;;
+    --fields) fields=$(mdb_val "$1" "${2-}"); shift 2 ;;
+    --format) format=$(mdb_val "$1" "${2-}"); shift 2 ;;
     tt*)      [[ -z "$id" ]] || { echo "extra arg: $1" >&2; exit 64; }; id="$1"; shift ;;
     *)        echo "unknown arg: $1" >&2; exit 64 ;;
   esac
 done
 [[ -n "$id" ]] || { echo "usage: mdb-find <tconst> [--fields a,b,c] [--format jsonl|table]" >&2; exit 64; }
 [[ "$id" =~ ^tt[0-9]+$ ]] || { echo "bad tconst: $id" >&2; exit 65; }
-[[ -f "$db" ]] || { echo "no catalog — run mdb-import first" >&2; exit 66; }
-case "$format" in jsonl|table) ;; "") [[ -t 1 ]] && format=table || format=jsonl ;; *) echo "bad --format: $format" >&2; exit 65 ;; esac
+mdb_require_catalog
+mdb_pick_format
 
 if [[ -z "$fields" ]]; then
   fields=tconst,type,primary_title,original_title,start_year,end_year,runtime_minutes,avg_rating,num_votes,genres,series_stats
 fi
-json_args="" table_cols=""
 IFS=',' read -ra fs <<< "$fields"
-for f in "${fs[@]}"; do
-  case "$f" in
-    tconst|type|is_adult|primary_title|original_title|start_year|end_year|runtime_minutes|avg_rating|num_votes)
-      json_args+="'$f', t.$f, "
-      table_cols+="t.$f AS $f, " ;;
-    genres)
-      json_args+="'genres', (SELECT json_group_array(g.name)
-                       FROM genres_titles gt JOIN genres g ON g.id = gt.genre_id
-                      WHERE gt.title_id = t.tconst), "
-      table_cols+="(SELECT group_concat(g.name, ', ')
-                     FROM genres_titles gt JOIN genres g ON g.id = gt.genre_id
-                    WHERE gt.title_id = t.tconst) AS genres, " ;;
-    series_stats)
-      json_args+="'series_stats', (SELECT json_object('seasons', seasons, 'episodes', episodes, 'episodes_per_season', json(episodes_per_season))
-                     FROM series_stats WHERE parent_tconst = t.tconst), "
-      table_cols+="COALESCE(
-        (SELECT s.seasons ||
-                CASE WHEN min(j.value) = max(j.value) THEN 'x' || min(j.value)
-                     ELSE 'x(' || min(j.value) || '..' || max(j.value) || ')' END
-           FROM series_stats s, json_each(s.episodes_per_season) j
-          WHERE parent_tconst = t.tconst),
-        (SELECT seasons || 'S ' || episodes || 'E' FROM series_stats WHERE parent_tconst = t.tconst)
-      ) AS series_stats, " ;;
-    *) echo "bad --field: $f" >&2; exit 65 ;;
-  esac
-done
-json_args=${json_args%, }
-table_cols=${table_cols%, }
+mdb_build_fields "${fs[@]}"
 
-sqlite3 "$db" "SELECT 1 FROM titles t WHERE t.tconst = '$id';" | grep -q . || { echo "not found: $id" >&2; exit 1; }
+# not found must mean "no such title", not "catalog unreadable": run sqlite
+# outside a pipe so a DB error aborts here instead of masquerading as a miss.
+found=$(sqlite3 "$MDB_DB" "SELECT 1 FROM titles t WHERE t.tconst = '$id';")
+[[ -n "$found" ]] || { echo "not found: $id" >&2; exit 1; }
 
 if [[ "$format" == table ]]; then
-  sqlite3 -header -column "$db" "
-SELECT $table_cols
+  sqlite3 -header -column "$MDB_DB" "
+SELECT $MDB_TABLE_COLS
 FROM titles t WHERE t.tconst = '$id';" | sed 's/[[:space:]]*$//'
 else
-  sqlite3 -list "$db" "
-SELECT json_object($json_args)
+  sqlite3 -list "$MDB_DB" "
+SELECT json_object($MDB_JSON_ARGS)
 FROM titles t WHERE t.tconst = '$id';"
 fi

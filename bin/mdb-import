@@ -3,38 +3,70 @@
 # Rebuilds from scratch: the DB is a rebuildable cache artifact.
 #
 # Input : ~/.cache/mdb/title.{basics,ratings,episode}.tsv.gz  (see mdb-fetch)
-# Output: ~/.cache/mdb/catalog.sqlite
+# Output: ~/.cache/mdb/catalog.sqlite  (atomic: built in temp, moved at the end)
 set -euo pipefail
+source "$(dirname "$0")/_mdb_common"
 
-case "${1-}" in -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;; esac
+case "${1-}" in -h|--help) mdb_help; exit 0 ;; esac
 
-cache="$HOME/.cache/mdb"
-db="$cache/catalog.sqlite"
+cache="$MDB_CACHE"
+db="$MDB_DB"
 for f in title.basics title.ratings title.episode; do
   [[ -f "$cache/$f.tsv.gz" ]] || { echo "missing $f.tsv.gz — run mdb-fetch first" >&2; exit 66; }
 done
 
-tmp="$(mktemp -d)"
+# reclaim temp dirs orphaned by killed runs: the 60min threshold dwarfs the
+# build time (~30s), so a matching dir is a dead run, never a live one
+find "$cache" -maxdepth 1 -type d -name 'mdb-import.*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true
+tmp="$(mktemp -d "$cache/mdb-import.XXXXXX")"   # same fs as $db -> mv is a rename
 trap 'rm -rf "$tmp"' EXIT
 
 echo "decompressing…"
-# Strip " from basics: sqlite .import treats " as a quote char and mangles rows.
-gunzip -c "$cache/title.basics.tsv.gz"  | tr -d '"' > "$tmp/basics.tsv"
+# One pass on basics: keep only the wanted types (10.8M -> 1.3M rows, the
+# bulk of the import is then 8x smaller) and fix quotes — sqlite's .import
+# treats " as a quote char, so on quote-bearing lines every field gets quoted
+# with inner quotes doubled: titles keep their quotes verbatim.
+prep_basics() { awk 'BEGIN{FS=OFS="\t"}
+  NR==1{print;next}
+  $2!="movie" && $2!="tvSeries" && $2!="tvMiniSeries" && $2!="tvMovie"{next}
+  index($0,"\"")==0{print;next}
+  {for(i=1;i<=NF;i++){gsub(/"/,"\"\"",$i); $i="\""$i"\""}; print}'; }
+gunzip -c "$cache/title.basics.tsv.gz"  | prep_basics > "$tmp/basics.tsv"
 gunzip -c "$cache/title.ratings.tsv.gz" > "$tmp/ratings.tsv"
 gunzip -c "$cache/title.episode.tsv.gz" > "$tmp/episode.tsv"
 
-echo "building $db"
-rm -f "$db"
+out="$tmp/catalog.sqlite"
+echo "building $out"
 
+# Raw TSVs land in a throwaway main DB; the final catalog is ATTACHed as
+# "out" and filled with INSERT..SELECT, so it comes out slim with no VACUUM.
 # IMDb TSV: tab-separated, \N = null, genres comma-separated.
 # Keep movies + series; episodes become per-series aggregates.
-sqlite3 "$db" <<SQL
+sqlite3 "$tmp/build.sqlite" <<SQL
+.bail on
 .output /dev/null
 PRAGMA journal_mode=OFF;
-.output stdout
 PRAGMA synchronous=OFF;
+PRAGMA cache_size=-65536;
+.output stdout
 
-CREATE TABLE titles(
+CREATE TABLE raw_basics(tconst,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear,runtimeMinutes,genres);
+CREATE TABLE raw_ratings(tconst,averageRating,numVotes);
+CREATE TABLE raw_episode(tconst,parentTconst,seasonNumber,episodeNumber);
+
+.mode list
+.separator "\t"
+.import --skip 1 "$tmp/basics.tsv"  raw_basics
+.import --skip 1 "$tmp/ratings.tsv" raw_ratings
+.import --skip 1 "$tmp/episode.tsv" raw_episode
+
+ATTACH '$out' AS out;
+.output /dev/null
+PRAGMA out.journal_mode=OFF;
+PRAGMA out.synchronous=OFF;
+.output stdout
+
+CREATE TABLE out.titles(
   tconst          TEXT PRIMARY KEY,
   type            TEXT NOT NULL,
   primary_title   TEXT,
@@ -46,33 +78,24 @@ CREATE TABLE titles(
   avg_rating      REAL,
   num_votes       INTEGER
 );
-CREATE TABLE genres(
+CREATE TABLE out.genres(
   id   INTEGER PRIMARY KEY,
   name TEXT NOT NULL UNIQUE
 );
-CREATE TABLE genres_titles(
+CREATE TABLE out.genres_titles(
   genre_id INTEGER NOT NULL,
   title_id TEXT    NOT NULL
 );
-CREATE TABLE series_stats(
+CREATE TABLE out.series_stats(
   parent_tconst TEXT PRIMARY KEY,
   seasons       INTEGER,
   episodes      INTEGER,
   episodes_per_season      -- JSON object, e.g. {"1":10,"2":10}
-)
-;
+);
 
-CREATE TABLE raw_basics(tconst,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear,runtimeMinutes,genres);
-CREATE TABLE raw_ratings(tconst,averageRating,numVotes);
-CREATE TABLE raw_episode(tconst,parentTconst,seasonNumber,episodeNumber);
-
-.mode list
-.separator "\t"
-.import --skip 1 $tmp/basics.tsv  raw_basics
-.import --skip 1 $tmp/ratings.tsv raw_ratings
-.import --skip 1 $tmp/episode.tsv raw_episode
-
-INSERT INTO titles
+INSERT INTO out.titles
+  -- Verified on current dumps: startYear/endYear/runtimeMinutes are always
+  -- '\N' or pure digits for the kept types, so no numeric coercion here.
   SELECT b.tconst, b.titleType, b.primaryTitle, b.originalTitle,
          NULLIF(b.isAdult,'\N'), NULLIF(b.startYear,'\N'), NULLIF(b.endYear,'\N'),
          NULLIF(b.runtimeMinutes,'\N'), NULLIF(r.averageRating,'\N'), NULLIF(r.numVotes,'\N')
@@ -83,19 +106,26 @@ CREATE TEMP TABLE kept AS
   SELECT tconst, genres FROM raw_basics
   WHERE titleType IN ('movie','tvSeries','tvMiniSeries','tvMovie') AND genres <> '\N';
 
-INSERT INTO genres(name)
+-- IMDb genre vocabulary is quote/backslash-free (28 names), which the
+-- json_each('["' || ... || '"]') bridge below relies on; a genre name with
+-- JSON-special characters would produce malformed JSON and abort via .bail.
+INSERT INTO out.genres(name)
   SELECT DISTINCT value FROM kept, json_each('["' || replace(genres, ',', '","') || '"]');
 
-INSERT INTO genres_titles(genre_id, title_id)
+INSERT INTO out.genres_titles(genre_id, title_id)
   SELECT g.id, k.tconst
-  FROM kept k, json_each('["' || replace(k.genres, ',', '","') || '"]') je, genres g
+  FROM kept k, json_each('["' || replace(k.genres, ',', '","') || '"]') je, out.genres g
   WHERE g.name = je.value;
 
-INSERT INTO series_stats
+INSERT INTO out.series_stats
+  -- Semantics: episodes counts ALL episodes of kept series, including the
+  -- ~2M rows IMDb lists without a season number; episodes_per_season covers
+  -- numbered seasons only. So episodes >= sum(map) is expected (~50k series).
+  -- The FILTER is required: json_group_object rejects NULL keys.
   WITH per_season AS (
     SELECT parentTconst, NULLIF(NULLIF(seasonNumber,'\N'),'') AS season, COUNT(*) AS eps
     FROM raw_episode
-    WHERE parentTconst IN (SELECT tconst FROM titles)
+    WHERE parentTconst IN (SELECT tconst FROM out.titles)
     GROUP BY parentTconst, season
   )
   SELECT parentTconst, COUNT(season), SUM(eps),
@@ -103,17 +133,16 @@ INSERT INTO series_stats
   FROM per_season
   GROUP BY parentTconst;
 
-DROP TABLE raw_basics; DROP TABLE raw_ratings; DROP TABLE raw_episode;
-
-CREATE INDEX idx_titles_type   ON titles(type);
-CREATE INDEX idx_titles_year   ON titles(start_year);
-CREATE INDEX idx_titles_rating ON titles(num_votes, avg_rating);
-CREATE INDEX idx_gt_title      ON genres_titles(title_id);
-CREATE INDEX idx_gt_genre      ON genres_titles(genre_id);
-VACUUM;
+CREATE INDEX out.idx_titles_type   ON titles(type);
+CREATE INDEX out.idx_titles_year   ON titles(start_year);
+CREATE INDEX out.idx_titles_rating ON titles(num_votes, avg_rating);
+CREATE INDEX out.idx_gt_title      ON genres_titles(title_id);
+CREATE INDEX out.idx_gt_genre      ON genres_titles(genre_id);
+DETACH out;
 SQL
 
-echo "done"
+mv "$out" "$db"
+echo "done -> $db"
 sqlite3 "$db" "
 SELECT 'titles',        COUNT(*) FROM titles
 UNION ALL SELECT 'genres',        COUNT(*) FROM genres

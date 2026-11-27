@@ -5,31 +5,35 @@
 # Usage: mdb-stats [--format jsonl|table]
 #   --format jsonl|table  default: table on a terminal, jsonl when piped
 #
-# JSONL rows are tagged: {"section":"db"|"source"|"type"|"genre", ...}
+# JSONL rows are tagged: {"section":"db"|"count"|"source"|"type"|"genre", ...}
 set -euo pipefail
-
-cache="$HOME/.cache/mdb"
-db="$cache/catalog.sqlite"
+source "$(dirname "$0")/_mdb_common"
+cache="$MDB_CACHE"
+db="$MDB_DB"
 
 format=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -h|--help) awk 'NR>1{if(!/^#/)exit; sub(/^# ?/,"");print}' "$0"; exit 0 ;;
-    --format) format="$2"; shift 2 ;;
+    -h|--help) mdb_help; exit 0 ;;
+    --format) format=$(mdb_val "$1" "${2-}"); shift 2 ;;
     *) echo "unknown arg: $1" >&2; exit 64 ;;
   esac
 done
-case "$format" in jsonl|table) ;; "") [[ -t 1 ]] && format=table || format=jsonl ;; *) echo "bad --format: $format" >&2; exit 65 ;; esac
-
-[[ -f "$db" ]] || { echo "no catalog — run mdb-import first" >&2; exit 66; }
+mdb_pick_format
+mdb_require_catalog
 
 mtime() {  # file mtime as YYYY-MM-DD, portable
   local e
-  e=$(stat -c %m "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null) || echo "?"
+  e=$(stat -c %m "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null) || { echo "?"; return; }
   date -u -d "@$e" +%F 2>/dev/null || date -u -r "$e" +%F
 }
 
-size() { du -h "$1" 2>/dev/null | cut -f1 | tr -d ' '; }
+size() {  # du -h, size only; "?" when unreadable
+  local s
+  s=$(du -h "$1" 2>/dev/null | cut -f1)
+  s=${s:-?}
+  printf '%s' "${s// /}"
+}
 
 counts=$(sqlite3 -list "$db" "
 SELECT 'titles=' || COUNT(*) FROM titles
@@ -38,10 +42,11 @@ UNION ALL SELECT 'series_with_episodes=' || COUNT(*) FROM series_stats;")
 
 if [[ "$format" == table ]]; then
   printf 'catalog  %s  (%s, built %s)\n' "$db" "$(size "$db")" "$(mtime "$db")"
-  sed 's/^/  /' <<<"$counts"
+  printf '  %s\n' "${counts//$'\n'/$'\n'  }"
   echo
   echo "sources (fetched)"
   for f in "$cache"/title.*.tsv.gz; do
+    [[ -e "$f" ]] || continue
     printf '  %-22s %s\n' "$(basename "$f")" "$(mtime "$f")"
   done
   echo
@@ -55,12 +60,16 @@ if [[ "$format" == table ]]; then
   FROM genres g LEFT JOIN genres_titles gt ON gt.genre_id = g.id
   GROUP BY g.id ORDER BY g.name;" | sed 's/[[:space:]]*$//;s/^/  /'
 else
-  printf '{"section":"db","path":"%s","size":"%s","built":"%s"}\n' "$db" "$(size "$db")" "$(mtime "$db")"
-  while IFS== read -r k v; do
+  sqlite3 :memory: "SELECT json_object('section','db','path','$(sq "$db")',
+    'size',NULLIF(NULLIF('$(size "$db")',''),'?'),
+    'built',NULLIF('$(sq "$(mtime "$db")")','?'));"
+  while IFS='=' read -r k v; do
     printf '{"section":"count","name":"%s","count":%s}\n' "$k" "$v"
   done <<<"$counts"
   for f in "$cache"/title.*.tsv.gz; do
-    printf '{"section":"source","file":"%s","fetched":"%s"}\n' "$(basename "$f")" "$(mtime "$f")"
+    [[ -e "$f" ]] || continue
+    sqlite3 :memory: "SELECT json_object('section','source','file','$(sq "$(basename "$f")")',
+      'fetched',NULLIF('$(sq "$(mtime "$f")")','?'));"
   done
   sqlite3 -list "$db" "
   SELECT json_object('section','type','name',type,'count',COUNT(*))
